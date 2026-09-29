@@ -1,16 +1,32 @@
-# React + Vite
+# Assignment Reminder App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A student app for organizing assignments, tracking deadlines, and receiving reminders. The project currently has a React frontend and an Express server skeleton.
 
-Currently, two official plugins are available:
+## Requirements
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Node.js and npm
 
-## React Compiler
+## Run the frontend
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+From the project folder:
 
-## Expanding the ESLint configuration
+```bash
+npm install
+npm run dev
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Open the local URL printed by Vite, usually http://localhost:5173/.
+
+## Run the server
+
+Open a second terminal:
+
+```bash
+cd server
+npm install
+npm start
+```
+
+Check the server at http://localhost:3001/api/health. It should return a JSON response with `"status":"ok"`.
+
+The frontend and server are currently separate; app features and their connection are upcoming work.
