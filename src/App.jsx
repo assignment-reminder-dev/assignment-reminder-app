@@ -18,6 +18,15 @@ function App() {
     setCurrentUser(data.user?.email || 'Student');
   };
 
+  const handleLogout = async () => {
+    try {
+      await fetch('http://localhost:3001/api/auth/logout', { method: 'POST' });
+      setCurrentUser(null);
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+  };
+
   return (
     <div className="app">
       <header className="header">
@@ -26,13 +35,33 @@ function App() {
           <span style={{ fontSize: '0.9rem' }}>
             Backend: <strong>{status}</strong>
           </span>
-          <button
-            className="profile"
-            onClick={() => setIsAuthOpen(true)}
-            style={{ cursor: 'pointer', border: 'none' }}
-          >
-            {currentUser ? currentUser : 'Log In / Register'}
-          </button>
+          {currentUser ? (
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <span className="profile">{currentUser}</span>
+              <button
+                onClick={handleLogout}
+                style={{
+                  padding: '6px 12px',
+                  cursor: 'pointer',
+                  borderRadius: '6px',
+                  border: '1px solid #d1d5db',
+                  background: '#ffffff',
+                  color: '#111827',
+                  fontWeight: '500',
+                }}
+              >
+                Log Out
+              </button>
+            </div>
+          ) : (
+            <button
+              className="profile"
+              onClick={() => setIsAuthOpen(true)}
+              style={{ cursor: 'pointer', border: 'none' }}
+            >
+              Log In / Register
+            </button>
+          )}
         </div>
       </header>
 
