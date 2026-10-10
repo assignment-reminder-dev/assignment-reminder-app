@@ -1,11 +1,26 @@
-import './App.css'
+import React, { useState, useEffect } from 'react';
+import './App.css';
 
 function App() {
+  const [status, setStatus] = useState('Checking...');
+
+  useEffect(() => {
+    fetch('http://localhost:3001/api/health')
+      .then((res) => res.json())
+      .then((data) => setStatus(data.status))
+      .catch(() => setStatus('offline'));
+  }, []);
+
   return (
     <div className="app">
       <header className="header">
         <h1>Assignment Reminder</h1>
-        <div className="profile">Student</div>
+        <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.9rem' }}>
+            Backend: <strong>{status}</strong>
+          </span>
+          <div className="profile">Student</div>
+        </div>
       </header>
 
       <div className="layout">
@@ -28,7 +43,7 @@ function App() {
         </main>
       </div>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
