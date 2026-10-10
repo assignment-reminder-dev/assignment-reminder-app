@@ -100,7 +100,29 @@ app.post('/api/auth/logout', (req, res) => {
     return res.json({ message: 'Logged out successfully' });
   });
 });
+const assignments = [];
 
+app.get('/api/assignments', (req, res) => {
+  res.json(assignments);
+});
+
+app.post('/api/assignments', (req, res) => {
+  const { title, course, dueDate } = req.body;
+  if (!title || !course || !dueDate) {
+    return res.status(400).json({ error: 'Title, course, and due date are required.' });
+  }
+
+  const newAssignment = {
+    id: Date.now().toString(),
+    title,
+    course,
+    dueDate,
+    createdAt: new Date().toISOString(),
+  };
+
+  assignments.push(newAssignment);
+  res.status(201).json(newAssignment);
+});
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
