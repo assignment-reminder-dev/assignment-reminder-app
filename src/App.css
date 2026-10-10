@@ -89,3 +89,23 @@ body {
 .dashboard-card h3 {
   margin-top: 0;
 }
+
+.header h1,
+.sidebar h2,
+.content h2,
+.dashboard-card h3 {
+  color: #111827 !important;
+}
+
+.profile {
+  background-color: #e5e7eb;
+  color: #111827 !important;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 20px;
+  transition: background-color 0.2s;
+}
+
+.profile:hover {
+  background-color: #d1d5db;
+}

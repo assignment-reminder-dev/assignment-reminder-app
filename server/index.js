@@ -2,8 +2,12 @@ require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
-
+const cors = require('cors');
 const app = express();
+app.use(cors({
+  origin: 'http://localhost:5173',
+  credentials: true
+}));
 const PORT = process.env.PORT || 3001;
 
 app.use(express.json());
