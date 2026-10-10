@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
+import AuthModal from './components/AuthModal';
 
 function App() {
   const [status, setStatus] = useState('Checking...');
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
     fetch('http://localhost:3001/api/health')
@@ -10,6 +13,10 @@ function App() {
       .then((data) => setStatus(data.status))
       .catch(() => setStatus('offline'));
   }, []);
+
+  const handleAuthSuccess = (data) => {
+    setCurrentUser(data.user?.email || 'Student');
+  };
 
   return (
     <div className="app">
@@ -19,7 +26,13 @@ function App() {
           <span style={{ fontSize: '0.9rem' }}>
             Backend: <strong>{status}</strong>
           </span>
-          <div className="profile">Student</div>
+          <button
+            className="profile"
+            onClick={() => setIsAuthOpen(true)}
+            style={{ cursor: 'pointer', border: 'none' }}
+          >
+            {currentUser ? currentUser : 'Log In / Register'}
+          </button>
         </div>
       </header>
 
@@ -42,6 +55,12 @@ function App() {
           </div>
         </main>
       </div>
+
+      <AuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        onAuthSuccess={handleAuthSuccess}
+      />
     </div>
   );
 }
