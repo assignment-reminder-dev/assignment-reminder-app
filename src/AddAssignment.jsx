@@ -1,0 +1,350 @@
+import { useEffect, useState } from 'react'
+import './Assignments.css'
+
+function AddAssignment({ onBack, onSaved, onManageCourses, assignment = null }) {
+    const [courses, setCourses] = useState([])
+    const [loading, setLoading] = useState(true)
+    const [loadError, setLoadError] = useState('')
+    const [retry, setRetry] = useState(0)
+    const [saving, setSaving] = useState(false)
+    const [message, setMessage] = useState('')
+    const [errors, setErrors] = useState({})
+
+    const [form, setForm] = useState(() => {
+        if (!assignment) {
+            return {
+                courseId: '',
+                title: '',
+                date: '',
+                time: '',
+                priority: 'Medium',
+                notes: '',
+                reminderMinutes: '1440',
+            }
+        }
+
+        const deadline = new Date(assignment.dueAt)
+        const pad = value => String(value).padStart(2, '0')
+
+        return {
+            courseId: String(assignment.courseId),
+            title: assignment.title,
+            date: [
+                deadline.getFullYear(),
+                pad(deadline.getMonth() + 1),
+                pad(deadline.getDate()),
+            ].join('-'),
+            time: `${pad(deadline.getHours())}:${pad(deadline.getMinutes())}`,
+            priority: assignment.priority,
+            notes: assignment.notes,
+            reminderMinutes: String(assignment.reminderMinutes),
+        }
+    })
+
+    useEffect(() => {
+        const controller = new AbortController()
+
+        async function loadCourses() {
+            setLoading(true)
+            setLoadError('')
+
+            try {
+                const response = await fetch('/api/courses', {
+                    signal: controller.signal,
+                })
+                const data = await response.json()
+
+                if (!response.ok) {
+                    throw new Error(data.message || 'Could not load courses.')
+                }
+
+                setCourses(data.courses)
+            } catch (error) {
+                if (!controller.signal.aborted) {
+                    setLoadError(
+                        error instanceof TypeError
+                            ? 'Unable to reach the server.'
+                            : error.message,
+                    )
+                }
+            } finally {
+                if (!controller.signal.aborted) setLoading(false)
+            }
+        }
+
+        loadCourses()
+        return () => controller.abort()
+    }, [retry])
+
+    function changeField(event) {
+        const { name, value } = event.target
+        setForm(current => ({ ...current, [name]: value }))
+        setErrors({})
+        setMessage('')
+    }
+
+    function fieldError(name) {
+        return errors[name] ? (
+            <small className="assignment-error" id={`${name}-error`}>
+                {errors[name]}
+            </small>
+        ) : null
+    }
+
+    function errorAttributes(name) {
+        return {
+            'aria-invalid': Boolean(errors[name]),
+            'aria-describedby': errors[name] ? `${name}-error` : undefined,
+        }
+    }
+
+    async function saveAssignment(event) {
+        event.preventDefault()
+        if (saving) return
+
+        setErrors({})
+        setMessage('')
+
+        const [year, month, day] = form.date.split('-').map(Number)
+        const [hour, minute] = form.time.split(':').map(Number)
+        const deadline = new Date(year, month - 1, day, hour, minute)
+
+        if (
+            !Number.isFinite(deadline.getTime()) ||
+            year < 1900 ||
+            year > 9999 ||
+            deadline.getFullYear() !== year ||
+            deadline.getMonth() !== month - 1 ||
+            deadline.getDate() !== day ||
+            deadline.getHours() !== hour ||
+            deadline.getMinutes() !== minute
+        ) {
+            setErrors({ dueAt: 'Enter a valid date and time in your time zone.' })
+            return
+        }
+
+        setSaving(true)
+
+        try {
+            const response = await fetch(
+                assignment ? `/api/assignments/${assignment.id}` : '/api/assignments',
+                {
+                    method: assignment ? 'PUT' : 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        courseId: Number(form.courseId),
+                        title: form.title,
+                        dueAt: deadline.toISOString(),
+                        priority: form.priority,
+                        notes: form.notes,
+                        reminderMinutes: Number(form.reminderMinutes),
+                    }),
+                })
+
+            const data = await response.json()
+
+            if (!response.ok) {
+                setErrors(data.errors || {})
+                setMessage(data.message || 'Could not save your assignment.')
+                return
+            }
+
+            onSaved(data.assignment)
+        } catch {
+            setMessage(
+                'Could not confirm the save. Your entries have been kept. Check your connection before retrying.',
+            )
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    return (
+        <main className="auth-page">
+            <section className="auth-card assignment-form">
+                <button
+                    className="back-button"
+                    aria-label="Back to dashboard"
+                    onClick={onBack}
+                    disabled={saving}
+                >
+                    ‹
+                </button>
+
+                <h1>{assignment ? 'Edit assignment' : 'Add assignment'}</h1>
+                <p className="intro">Required fields are marked with *.</p>
+
+                {loading ? (
+                    <p role="status">Loading courses…</p>
+                ) : loadError ? (
+                    <>
+                        <p className="error" role="alert">{loadError}</p>
+                        <button
+                            className="secondary-button"
+                            onClick={() => setRetry(current => current + 1)}
+                        >
+                            Retry
+                        </button>
+                    </>
+                ) : courses.length === 0 ? (
+                    <>
+                        <p className="intro">
+                            Add a course before creating your first assignment.
+                        </p>
+                        <button
+                            className="primary-button"
+                            onClick={onManageCourses}
+                        >
+                            Manage courses
+                        </button>
+                    </>
+                ) : (
+                    <form onSubmit={saveAssignment}>
+                        <fieldset disabled={saving}>
+                            <div className="form-field">
+                                <label htmlFor="assignment-course">Course *</label>
+                                <select
+                                    id="assignment-course"
+                                    name="courseId"
+                                    value={form.courseId}
+                                    onChange={changeField}
+                                    {...errorAttributes('courseId')}
+                                    required
+                                >
+                                    <option value="">Choose a course</option>
+                                    {courses.map(course => (
+                                        <option key={course.id} value={course.id}>
+                                            {course.code} · {course.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                {fieldError('courseId')}
+                            </div>
+
+                            <div className="form-field">
+                                <label htmlFor="assignment-title">Assignment title *</label>
+                                <input
+                                    id="assignment-title"
+                                    name="title"
+                                    placeholder="UI wireframe"
+                                    value={form.title}
+                                    onChange={changeField}
+                                    maxLength={200}
+                                    {...errorAttributes('title')}
+                                    required
+                                />
+                                {fieldError('title')}
+                            </div>
+
+                            <div className="assignment-date-row">
+                                <div className="form-field">
+                                    <label htmlFor="assignment-date">Due date *</label>
+                                    <input
+                                        id="assignment-date"
+                                        name="date"
+                                        type="date"
+                                        min="1900-01-01"
+                                        max="9999-12-31"
+                                        value={form.date}
+                                        onChange={changeField}
+                                        {...errorAttributes('dueAt')}
+                                        required
+                                    />
+                                </div>
+
+                                <div className="form-field">
+                                    <label htmlFor="assignment-time">Due time *</label>
+                                    <input
+                                        id="assignment-time"
+                                        name="time"
+                                        type="time"
+                                        value={form.time}
+                                        onChange={changeField}
+                                        {...errorAttributes('dueAt')}
+                                        required
+                                    />
+                                </div>
+                            </div>
+                            {fieldError('dueAt')}
+                            <div className="form-field">
+                                <fieldset
+                                    className="priority-fieldset"
+                                    aria-describedby={errors.priority ? 'priority-error' : undefined}
+                                >
+                                    <legend>Priority *</legend>
+
+                                    <div className="priority-options">
+                                        {['High', 'Medium', 'Low'].map(priority => (
+                                            <label className="priority-option" key={priority}>
+                                                <input
+                                                    type="radio"
+                                                    name="priority"
+                                                    value={priority}
+                                                    checked={form.priority === priority}
+                                                    onChange={changeField}
+                                                    required
+                                                />
+                                                <span>{priority}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </fieldset>
+
+                                {fieldError('priority')}
+                            </div>
+
+                            <div className="form-field">
+                                <label htmlFor="assignment-notes">Notes (optional)</label>
+                                <textarea
+                                    id="assignment-notes"
+                                    name="notes"
+                                    placeholder="Add any useful details."
+                                    value={form.notes}
+                                    onChange={changeField}
+                                    maxLength={2000}
+                                    rows={4}
+                                    {...errorAttributes('notes')}
+                                />
+                                {fieldError('notes')}
+                            </div>
+
+                            <div className="form-field">
+                                <label htmlFor="assignment-reminder">Reminder</label>
+                                <select
+                                    id="assignment-reminder"
+                                    name="reminderMinutes"
+                                    value={form.reminderMinutes}
+                                    onChange={changeField}
+                                    {...errorAttributes('reminderMinutes')}
+                                >
+                                    <option value="60">1 hour before</option>
+                                    <option value="1440">1 day before</option>
+                                    <option value="2880">2 days before</option>
+                                    <option value="0">Off — no reminder</option>
+                                </select>
+                                <small>Uses your device time zone.</small>
+                                {fieldError('reminderMinutes')}
+                            </div>
+
+                            <button className="primary-button" type="submit">
+                                {saving ? 'Saving…' : assignment ? 'Save changes' : 'Save assignment'}
+                            </button>
+                        </fieldset>
+                    </form>
+                )}
+
+                <button
+                    className="secondary-button"
+                    onClick={onBack}
+                    disabled={saving}
+                >
+                    Cancel
+                </button>
+
+                <p className="form-message error" role="status">{message}</p>
+            </section>
+        </main>
+    )
+}
+
+export default AddAssignment

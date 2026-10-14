@@ -1,0 +1,368 @@
+.assignment-form select,
+.assignment-form textarea {
+    display: block;
+    width: 100%;
+    min-height: 48px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: white;
+    color: var(--navy);
+    font: inherit;
+}
+
+.assignment-form textarea {
+    resize: vertical;
+}
+
+.assignment-form select:focus-visible,
+.assignment-form textarea:focus-visible {
+    outline: 3px solid var(--teal);
+    outline-offset: 3px;
+}
+
+.assignment-form .assignment-error {
+    display: block;
+    margin-bottom: 16px;
+    color: var(--rust);
+}
+
+.assignment-date-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.assignment-date-row input {
+    min-width: 0;
+}
+
+.dashboard-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 32px;
+}
+
+.dashboard-actions button {
+    flex: 1;
+    width: auto;
+    margin: 0;
+}
+
+.assignment-list {
+    list-style: none;
+    padding: 0;
+    margin: 20px 0;
+}
+
+.assignment-card {
+    margin-bottom: 16px;
+    padding: 24px;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    background: white;
+    overflow-wrap: anywhere;
+}
+
+.assignment-card-header {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.assignment-card h3 {
+    margin: 12px 0;
+    font-size: 20px;
+}
+
+.assignment-card p {
+    margin: 8px 0;
+    color: var(--slate);
+}
+
+.assignment-card .overdue-label {
+    color: var(--rust);
+}
+
+.assignment-priority {
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.dashboard-save-message {
+    color: var(--teal);
+}
+
+@media (max-width: 380px) {
+    .assignment-date-row {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+}
+
+.assignment-form .priority-fieldset {
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.priority-fieldset legend {
+    margin-bottom: 8px;
+    padding: 0;
+    font-weight: 700;
+}
+
+.priority-options {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.assignment-form .priority-option {
+    position: relative;
+    display: block;
+    margin: 0;
+    cursor: pointer;
+}
+
+.priority-option input[type="radio"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    min-height: 0;
+    padding: 0;
+    margin: 0;
+    opacity: 0;
+}
+
+.priority-option span {
+    display: grid;
+    place-items: center;
+    min-height: 48px;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: white;
+    color: var(--navy);
+}
+
+.priority-option input:checked+span {
+    border: 2px solid var(--teal);
+    background: #e8f3f1;
+    color: var(--teal);
+    font-weight: 700;
+}
+
+.priority-option input:focus-visible+span {
+    outline: 3px solid var(--teal);
+    outline-offset: 3px;
+}
+
+.priority-option input:disabled+span {
+    opacity: 0.65;
+    cursor: wait;
+}
+
+.assignment-priority {
+    padding: 6px 12px;
+    border: 0;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.priority-high {
+    background: #fff3e8;
+    color: var(--rust);
+}
+
+.priority-medium {
+    background: #edf1f6;
+    color: var(--navy);
+}
+
+.priority-low {
+    background: #f0f3f6;
+    color: var(--slate);
+}
+
+.assignment-card .assignment-status {
+    font-weight: 700;
+}
+
+.assignment-card .assignment-status-overdue {
+    color: var(--rust);
+}
+
+.assignment-card .assignment-status-teal {
+    color: var(--teal);
+}
+
+.assignment-card .assignment-status-neutral {
+    color: var(--slate);
+}
+
+.assignment-section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.assignment-section-heading h2 {
+    margin: 0;
+}
+
+.view-all-button {
+    min-height: 44px;
+    padding: 8px 0 8px 12px;
+    border: 0;
+    background: transparent;
+    color: var(--teal);
+    font: inherit;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.view-all-button:hover {
+    text-decoration: underline;
+}
+
+.view-all-button:focus-visible {
+    outline: 3px solid var(--teal);
+    outline-offset: 3px;
+    border-radius: 4px;
+}
+
+.assignment-title-button {
+    min-height: 44px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--navy);
+    font: inherit;
+    font-weight: inherit;
+    text-align: left;
+    cursor: pointer;
+    overflow-wrap: anywhere;
+}
+
+.assignment-title-button:hover {
+    text-decoration: underline;
+}
+
+.assignment-title-button:focus-visible {
+    outline: 3px solid var(--teal);
+    outline-offset: 4px;
+    border-radius: 4px;
+}
+
+.assignment-details h1 {
+    overflow-wrap: anywhere;
+}
+
+.details-badges {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 28px;
+}
+
+.details-status-positive,
+.details-status-neutral {
+    padding: 6px 12px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.details-status-positive {
+    background: #e8f3f1;
+    color: var(--teal);
+}
+
+.details-status-neutral {
+    background: #f0f3f6;
+    color: var(--slate);
+}
+
+.details-deadline {
+    padding: 24px;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    background: white;
+    text-align: center;
+}
+
+.details-deadline p {
+    margin: 8px 0 0;
+    color: var(--slate);
+}
+
+.details-notes,
+.details-reminder {
+    margin: 28px 0;
+}
+
+.details-notes h2,
+.details-reminder h2 {
+    margin: 0 0 8px;
+    font-size: 20px;
+}
+
+.details-notes p,
+.details-reminder p {
+    margin: 0;
+    color: var(--slate);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.status-options {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.status-legend {
+    margin-bottom: 16px;
+    font-weight: 700;
+}
+
+.status-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 56px;
+    margin-bottom: 16px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: white;
+    cursor: pointer;
+}
+
+.status-option:has(input:checked) {
+    border: 2px solid var(--teal);
+    background: #e8f3f1;
+    color: var(--teal);
+    font-weight: 700;
+}
+
+.status-option input {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--teal);
+}
+
+.status-option:focus-within {
+    outline: 3px solid var(--teal);
+    outline-offset: 3px;
+}
