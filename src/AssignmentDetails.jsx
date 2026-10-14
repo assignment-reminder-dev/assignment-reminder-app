@@ -15,6 +15,10 @@ function AssignmentDetails({ assignment, onBack, onUpdated, onEdit }) {
     const [message, setMessage] = useState('')
     const [success, setSuccess] = useState(false)
     const [confirmingDelete, setConfirmingDelete] = useState(false)
+    const [changingReminder, setChangingReminder] = useState(false)
+    const [draftReminder, setDraftReminder] = useState(
+        assignment.reminderMinutes,
+    )
 
     async function saveStatus(event) {
         event.preventDefault()
@@ -110,6 +114,178 @@ function AssignmentDetails({ assignment, onBack, onUpdated, onEdit }) {
                             setConfirmingDelete(false)
                             setMessage('')
                         }}
+                    >
+                        Cancel
+                    </button>
+
+                    <p className="form-message error" role="status">
+                        {message}
+                    </p>
+                </section>
+            </main>
+        )
+    }
+    async function saveReminder(event) {
+        event.preventDefault()
+        if (saving) return
+
+        setSaving(true)
+        setMessage('')
+        setSuccess(false)
+
+        try {
+            const response = await fetch(
+                `/api/assignments/${assignment.id}/reminder`,
+                {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        reminderMinutes: draftReminder,
+                    }),
+                },
+            )
+
+            const data = await response.json()
+
+            if (!response.ok) {
+                setMessage(data.message || 'Could not save the reminder.')
+                return
+            }
+
+            onUpdated(data.assignment)
+            setChangingReminder(false)
+            setSuccess(true)
+            setMessage(data.message)
+        } catch {
+            setMessage(
+                'Could not confirm the save. Your selection has been kept.',
+            )
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    function cancelReminder() {
+        setChangingReminder(false)
+        setDraftReminder(assignment.reminderMinutes)
+        setMessage('')
+        setSuccess(false)
+    }
+
+    if (changingReminder) {
+        const dueDate = new Date(assignment.dueAt)
+        const reminderDate = new Date(
+            dueDate.getTime() - draftReminder * 60 * 1000,
+        )
+
+        const options = [
+            { value: 60, label: '1 hour before' },
+            { value: 1440, label: '1 day before' },
+            { value: 2880, label: '2 days before' },
+            { value: 0, label: 'Off — no reminder' },
+        ]
+
+        return (
+            <main className="auth-page">
+                <section className="auth-card">
+                    <button
+                        type="button"
+                        className="back-button"
+                        aria-label="Back to assignment"
+                        disabled={saving}
+                        onClick={cancelReminder}
+                    >
+                        ‹
+                    </button>
+
+                    <h1>Set reminder</h1>
+
+                    <p className="intro">
+                        {assignment.title} · {dueDate.toLocaleString(
+                            undefined,
+                            {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                                hour: 'numeric',
+                                minute: '2-digit',
+                            },
+                        )}
+                    </p>
+
+                    <form onSubmit={saveReminder}>
+                        <fieldset
+                            className="reminder-options"
+                            disabled={saving}
+                        >
+                            <legend>Remind me</legend>
+
+                            {options.map(option => (
+                                <label
+                                    className="reminder-option"
+                                    key={option.value}
+                                >
+                                    <input
+                                        type="radio"
+                                        name="reminder"
+                                        value={option.value}
+                                        checked={draftReminder === option.value}
+                                        onChange={() => {
+                                            setDraftReminder(option.value)
+                                            setMessage('')
+                                        }}
+                                    />
+
+                                    <span>{option.label}</span>
+                                </label>
+                            ))}
+
+                            <div
+                                className="reminder-preview"
+                                aria-live="polite"
+                            >
+                                {draftReminder === 0 ? (
+                                    <p>No reminder for this assignment.</p>
+                                ) : (
+                                    <>
+                                        <p>
+                                            Reminder time: {reminderDate.toLocaleString(
+                                                undefined,
+                                                {
+                                                    month: 'short',
+                                                    day: 'numeric',
+                                                    year: 'numeric',
+                                                    hour: 'numeric',
+                                                    minute: '2-digit',
+                                                },
+                                            )}
+                                        </p>
+
+                                        {reminderDate.getTime() < Date.now() && (
+                                            <p className="error">
+                                                This reminder time has already passed.
+                                            </p>
+                                        )}
+                                    </>
+                                )}
+
+                                <p>Uses your device time zone.</p>
+                            </div>
+
+                            <button
+                                className="primary-button"
+                                type="submit"
+                            >
+                                {saving ? 'Saving…' : 'Save reminder'}
+                            </button>
+                        </fieldset>
+                    </form>
+
+                    <button
+                        type="button"
+                        className="secondary-button"
+                        disabled={saving}
+                        onClick={cancelReminder}
                     >
                         Cancel
                     </button>
@@ -253,7 +429,19 @@ function AssignmentDetails({ assignment, onBack, onUpdated, onEdit }) {
 
                 <section className="details-reminder">
                     <h2>Reminder</h2>
-                    <p>{reminderLabels[assignment.reminderMinutes]}</p>
+
+                    <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => {
+                            setDraftReminder(assignment.reminderMinutes)
+                            setMessage('')
+                            setSuccess(false)
+                            setChangingReminder(true)
+                        }}
+                    >
+                        {reminderLabels[assignment.reminderMinutes]} · Change
+                    </button>
                 </section>
                 <button className="secondary-button" onClick={onEdit}>
                     Edit assignment

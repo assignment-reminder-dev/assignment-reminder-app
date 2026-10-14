@@ -348,5 +348,50 @@ router.delete('/:id', (req, res, next) => {
         next(error);
     }
 });
+router.patch('/:id/reminder', (req, res, next) => {
+    const id = Number(req.params.id);
+    const { reminderMinutes } = req.body || {};
+
+    if (
+        !/^[1-9]\d*$/.test(req.params.id) ||
+        !Number.isSafeInteger(id)
+    ) {
+        return res.status(400).json({
+            message: 'Invalid assignment ID.'
+        });
+    }
+
+    if (![0, 60, 1440, 2880].includes(reminderMinutes)) {
+        return res.status(400).json({
+            message: 'Choose a valid reminder option.'
+        });
+    }
+
+    try {
+        const result = db.prepare(`
+            UPDATE assignments
+            SET reminder_minutes = ?
+            WHERE id = ? AND user_id = ?
+        `).run(reminderMinutes, id, req.session.userId);
+
+        if (!result.changes) {
+            return res.status(404).json({
+                message: 'Assignment not found.'
+            });
+        }
+
+        const assignment = db.prepare(`
+            ${assignmentQuery}
+            WHERE a.id = ? AND a.user_id = ?
+        `).get(id, req.session.userId);
+
+        res.json({
+            message: 'Reminder saved successfully.',
+            assignment
+        });
+    } catch (error) {
+        next(error);
+    }
+});
 
 module.exports = router;

@@ -366,3 +366,62 @@
     outline: 3px solid var(--teal);
     outline-offset: 3px;
 }
+
+.reminder-options {
+    display: grid;
+    gap: 12px;
+    margin: 32px 0 0;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+}
+
+.reminder-options legend {
+    margin-bottom: 16px;
+    color: var(--slate);
+    font-size: 14px;
+}
+
+.reminder-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 56px;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: white;
+    color: var(--navy);
+    cursor: pointer;
+    text-align: left;
+}
+
+.reminder-option:has(input:checked) {
+    border-color: var(--teal);
+    background: #e3f2f0;
+    font-weight: 700;
+}
+
+.reminder-option input {
+    width: 20px;
+    height: 20px;
+    margin: 0;
+    flex-shrink: 0;
+    accent-color: var(--teal);
+}
+
+.reminder-option:focus-within {
+    outline: 3px solid var(--teal);
+    outline-offset: 2px;
+}
+
+.reminder-preview {
+    margin: 20px 0;
+    color: var(--slate);
+    line-height: 1.5;
+    text-align: left;
+}
+
+.reminder-preview p {
+    margin: 6px 0;
+}

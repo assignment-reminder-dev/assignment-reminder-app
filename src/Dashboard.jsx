@@ -1,3 +1,4 @@
+import Calendar from './Calendar'
 import AssignmentDetails from './AssignmentDetails'
 import { useEffect, useState } from 'react'
 import Courses from './Courses'
@@ -62,7 +63,104 @@ function Dashboard({ user, onLogout, loading, message }) {
         setSavedMessage('')
         setScreen(nextScreen)
     }
+    function renderNavigation() {
+        return (
+            <nav className="dashboard-nav" aria-label="Main navigation">
+                <button
+                    type="button"
+                    aria-current={screen === 'home' ? 'page' : undefined}
+                    onClick={() => navigate('home')}
+                >
+                    <svg
+                        className="dashboard-nav-icon"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                    >
+                        <path d="M3 10 12 3l9 7" />
+                        <path d="M5 9v12h5v-7h4v7h5V9" />
+                    </svg>
+                    <span>Home</span>
+                </button>
 
+                <button
+                    type="button"
+                    aria-current={screen === 'calendar' ? 'page' : undefined}
+                    onClick={() => navigate('calendar')}
+                >
+                    <svg
+                        className="dashboard-nav-icon"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                    >
+                        <rect x="3" y="5" width="18" height="16" rx="2" />
+                        <path d="M7 3v4M17 3v4M3 11h18" />
+                        <path d="M8 15h1M15 15h1M8 18h1M15 18h1" />
+                    </svg>
+                    <span>Calendar</span>
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => navigate('add')}
+                >
+                    <span className="dashboard-nav-add-icon">
+                        <svg
+                            className="dashboard-nav-icon"
+                            viewBox="0 0 24 24"
+                            aria-hidden="true"
+                        >
+                            <path d="M12 5v14M5 12h14" />
+                        </svg>
+                    </span>
+                    <span>Add</span>
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => navigate('tasks')}
+                >
+                    <svg
+                        className="dashboard-nav-icon"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                    >
+                        <path d="m3 6 1 1 2-2M9 6h12" />
+                        <path d="m3 12 1 1 2-2M9 12h12" />
+                        <path d="m3 18 1 1 2-2M9 18h12" />
+                    </svg>
+                    <span>Tasks</span>
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => navigate('profile')}
+                >
+                    <svg
+                        className="dashboard-nav-icon"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                    >
+                        <circle cx="12" cy="7" r="4" />
+                        <path d="M4 21v-2a8 8 0 0 1 16 0v2" />
+                    </svg>
+                    <span>Profile</span>
+                </button>
+            </nav>
+        )
+    }
+    if (screen === 'calendar') {
+        return (
+            <Calendar
+                onBack={() => navigate('home')}
+                onOpenAssignment={assignment => {
+                    setSelectedAssignment(assignment)
+                    setDetailsOrigin('calendar')
+                    navigate('details')
+                }}
+                navigation={renderNavigation()}
+            />
+        )
+    }
     if (screen === 'courses') {
         return (
             <Courses
@@ -402,83 +500,8 @@ function Dashboard({ user, onLogout, loading, message }) {
                 >
                     + Add assignment
                 </button>
-                <nav className="dashboard-nav" aria-label="Main navigation">
-                    <button
-                        type="button"
-                        aria-current="page"
-                        onClick={() => navigate('home')}
-                    >
-                        <svg
-                            className="dashboard-nav-icon"
-                            viewBox="0 0 24 24"
-                            aria-hidden="true"
-                        >
-                            <path d="M3 10 12 3l9 7" />
-                            <path d="M5 9v12h5v-7h4v7h5V9" />
-                        </svg>
-                        <span>Home</span>
-                    </button>
+                {renderNavigation()}
 
-                    <button type="button" disabled>
-                        <svg
-                            className="dashboard-nav-icon"
-                            viewBox="0 0 24 24"
-                            aria-hidden="true"
-                        >
-                            <rect x="3" y="5" width="18" height="16" rx="2" />
-                            <path d="M7 3v4M17 3v4M3 11h18" />
-                            <path d="M8 15h1M15 15h1M8 18h1M15 18h1" />
-                        </svg>
-                        <span>Calendar</span>
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={() => navigate('add')}
-                    >
-                        <span className="dashboard-nav-add-icon">
-                            <svg
-                                className="dashboard-nav-icon"
-                                viewBox="0 0 24 24"
-                                aria-hidden="true"
-                            >
-                                <path d="M12 5v14M5 12h14" />
-                            </svg>
-                        </span>
-                        <span>Add</span>
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={() => navigate('tasks')}
-                    >
-                        <svg
-                            className="dashboard-nav-icon"
-                            viewBox="0 0 24 24"
-                            aria-hidden="true"
-                        >
-                            <path d="m3 6 1 1 2-2M9 6h12" />
-                            <path d="m3 12 1 1 2-2M9 12h12" />
-                            <path d="m3 18 1 1 2-2M9 18h12" />
-                        </svg>
-                        <span>Tasks</span>
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={() => navigate('profile')}
-                    >
-                        <svg
-                            className="dashboard-nav-icon"
-                            viewBox="0 0 24 24"
-                            aria-hidden="true"
-                        >
-                            <circle cx="12" cy="7" r="4" />
-                            <path d="M4 21v-2a8 8 0 0 1 16 0v2" />
-                        </svg>
-                        <span>Profile</span>
-                    </button>
-                </nav>
             </div>
         </main>
     )

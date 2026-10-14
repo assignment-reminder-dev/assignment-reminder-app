@@ -1,0 +1,135 @@
+.calendar-container {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.calendar-container h1 {
+    margin: 20px 0 12px;
+    font-size: 32px;
+    color: var(--navy);
+}
+
+.calendar-month {
+    margin: 0;
+    color: var(--slate);
+}
+
+.calendar-month-controls {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 24px 0 16px;
+}
+
+.calendar-month-controls button {
+    min-height: 44px;
+    padding: 8px 0;
+    border: 0;
+    background: transparent;
+    color: var(--teal);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.calendar-panel {
+    padding: 16px 8px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: white;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 8px 0;
+}
+
+.calendar-weekday {
+    padding: 8px 0;
+    color: var(--slate);
+    font-size: 14px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.calendar-day {
+    position: relative;
+    width: 100%;
+    max-width: 48px;
+    min-height: 48px;
+    justify-self: center;
+    padding: 8px 0 12px;
+    border: 2px solid transparent;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--navy);
+    font: inherit;
+    cursor: pointer;
+}
+
+
+.calendar-day-selected,
+.calendar-day-selected:hover {
+    background: #e0f2fe;
+    border-color: #0369a1;
+    color: var(--navy);
+    font-weight: 700;
+}
+
+.calendar-assignment-mark {
+    position: absolute;
+    bottom: 6px;
+    left: 50%;
+    width: 16px;
+    height: 2px;
+    transform: translateX(-50%);
+    background: var(--teal);
+}
+
+.calendar-day-selected .calendar-assignment-mark {
+    background: var(--teal);
+}
+
+.calendar-helper {
+    margin: 20px 0;
+    color: var(--slate);
+    line-height: 1.5;
+}
+
+.calendar-day-heading {
+    margin: 32px 0 20px;
+    color: var(--teal);
+    font-size: 16px;
+    text-transform: uppercase;
+}
+
+.calendar-day:focus-visible,
+.calendar-month-controls button:focus-visible {
+    outline: 3px solid var(--teal);
+    outline-offset: 2px;
+}
+
+.calendar-day-today,
+.calendar-day-today:hover {
+    background: green;
+    border-color: green;
+    color: white;
+    font-weight: 700;
+}
+
+.calendar-day-today .calendar-assignment-mark {
+    background: white;
+}
+
+.calendar-today-label {
+    margin: 12px 0;
+    color: green;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.calendar-day:hover {
+    background: #ebf6f5;
+}
