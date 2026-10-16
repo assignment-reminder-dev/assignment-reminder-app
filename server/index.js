@@ -192,6 +192,7 @@ app.post('/api/auth/logout', (req, res, next) => {
 });
 app.use('/api/courses', require('./courses'));
 app.use('/api/assignments', require('./assignments'));
+app.use('/api/notifications', require('./notifications'));
 app.use((error, req, res, next) => {
     if (error.type === 'entity.parse.failed') {
         return res.status(400).json({

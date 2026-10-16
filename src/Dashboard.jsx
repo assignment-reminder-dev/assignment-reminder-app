@@ -1,3 +1,5 @@
+import Notifications from './Notifications'
+import NotificationSettings from './NotificationSettings'
 import Calendar from './Calendar'
 import AssignmentDetails from './AssignmentDetails'
 import { useEffect, useState } from 'react'
@@ -16,6 +18,11 @@ function Dashboard({ user, onLogout, loading, message }) {
     const [retry, setRetry] = useState(0)
     const [savedMessage, setSavedMessage] = useState('')
     const [now, setNow] = useState(Date.now())
+    const [notifications, setNotifications] = useState([])
+    const [notificationsLoading, setNotificationsLoading] = useState(true)
+    const [notificationsError, setNotificationsError] = useState('')
+    const [notificationRetry, setNotificationRetry] = useState(0)
+    const [openingNotificationId, setOpeningNotificationId] = useState(null)
 
     useEffect(() => {
         const timer = setInterval(() => setNow(Date.now()), 30000)
@@ -58,6 +65,204 @@ function Dashboard({ user, onLogout, loading, message }) {
         loadAssignments()
         return () => controller.abort()
     }, [screen, retry])
+
+    useEffect(() => {
+        const controller = new AbortController()
+        let inFlight = false
+
+        async function loadNotifications() {
+            if (inFlight) return
+            inFlight = true
+
+            try {
+                const response = await fetch('/api/notifications', {
+                    signal: controller.signal,
+                })
+
+                const data = await response.json()
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.message || 'Could not load notifications.',
+                    )
+                }
+
+                if (!controller.signal.aborted) {
+                    setNotifications(data.notifications)
+                    setNotificationsError('')
+
+                    if (
+                        'Notification' in window &&
+                        Notification.permission === 'granted'
+                    ) {
+                        try {
+                            const pending = data.notifications.filter(item => {
+                                const key =
+                                    `assignment-popup:${user.id}:${item.id}`
+
+                                return (
+                                    !item.readAt &&
+                                    new Date(item.dueAt).getTime() > Date.now() &&
+                                    !localStorage.getItem(key)
+                                )
+                            })
+
+                            if (pending.length > 0) {
+                                // Check current assignment details before alerting.
+                                const assignmentResponse = await fetch(
+                                    '/api/assignments',
+                                    { signal: controller.signal },
+                                )
+
+                                if (assignmentResponse.ok) {
+                                    const assignmentData =
+                                        await assignmentResponse.json()
+
+                                    for (const item of pending) {
+                                        if (controller.signal.aborted) break
+
+                                        const assignment =
+                                            assignmentData.assignments.find(
+                                                entry =>
+                                                    entry.id === item.assignmentId,
+                                            )
+
+                                        // Skip completed or changed reminders.
+                                        if (
+                                            !assignment ||
+                                            assignment.status === 'Completed' ||
+                                            assignment.dueAt !== item.dueAt ||
+                                            assignment.reminderMinutes !==
+                                            item.reminderMinutes ||
+                                            new Date(assignment.dueAt).getTime() <=
+                                            Date.now()
+                                        ) {
+                                            continue
+                                        }
+
+                                        const key =
+                                            `assignment-popup:${user.id}:${item.id}`
+
+                                        if (localStorage.getItem(key)) continue
+
+                                        const popup = new Notification(
+                                            `Reminder: ${assignment.title}`,
+                                            {
+                                                body:
+                                                    `${assignment.courseCode} · Due ` +
+                                                    new Date(
+                                                        assignment.dueAt,
+                                                    ).toLocaleString(),
+                                                tag: key,
+                                            },
+                                        )
+
+                                        localStorage.setItem(key, 'shown')
+
+                                        popup.onclick = () => {
+                                            window.focus()
+                                            setScreen('notifications')
+                                            popup.close()
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (popupError) {
+                            if (!controller.signal.aborted) {
+                                console.warn(
+                                    'Could not show reminder popup:',
+                                    popupError,
+                                )
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                if (!controller.signal.aborted) {
+                    setNotificationsError(
+                        error instanceof TypeError
+                            ? 'Unable to reach the server. Please retry.'
+                            : error.message,
+                    )
+                }
+            } finally {
+                inFlight = false
+
+                if (!controller.signal.aborted) {
+                    setNotificationsLoading(false)
+                }
+            }
+        }
+
+        loadNotifications()
+        const timer = setInterval(loadNotifications, 30000)
+
+        return () => {
+            controller.abort()
+            clearInterval(timer)
+        }
+    }, [notificationRetry, screen, user.id])
+
+    async function openNotification(notification) {
+        if (openingNotificationId !== null) return
+
+        setOpeningNotificationId(notification.id)
+        setNotificationsError('')
+
+        try {
+            const response = await fetch('/api/assignments')
+            const data = await response.json()
+
+            if (!response.ok) {
+                throw new Error(
+                    data.message || 'Could not load the assignment.',
+                )
+            }
+
+            const assignment = data.assignments.find(
+                item => item.id === notification.assignmentId,
+            )
+
+            if (!assignment) {
+                throw new Error('This assignment is no longer available.')
+            }
+
+            const readResponse = await fetch(
+                `/api/notifications/${notification.id}/read`,
+                { method: 'PATCH' },
+            )
+
+            if (!readResponse.ok) {
+                const readData = await readResponse.json()
+                throw new Error(
+                    readData.message || 'Could not update the notification.',
+                )
+            }
+
+            setNotifications(current =>
+                current.map(item =>
+                    item.id === notification.id
+                        ? {
+                            ...item,
+                            readAt: item.readAt || new Date().toISOString(),
+                        }
+                        : item,
+                ),
+            )
+
+            setSelectedAssignment(assignment)
+            setDetailsOrigin('notifications')
+            navigate('details')
+        } catch (error) {
+            setNotificationsError(
+                error instanceof TypeError
+                    ? 'Unable to reach the server. Please retry.'
+                    : error.message,
+            )
+        } finally {
+            setOpeningNotificationId(null)
+        }
+    }
 
     function navigate(nextScreen) {
         setSavedMessage('')
@@ -161,6 +366,26 @@ function Dashboard({ user, onLogout, loading, message }) {
             />
         )
     }
+
+    if (screen === 'notifications') {
+        return (
+            <Notifications
+                notifications={notifications}
+                loading={notificationsLoading}
+                error={notificationsError}
+                openingId={openingNotificationId}
+                onBack={() => navigate('home')}
+                onRetry={() => {
+                    setNotificationsLoading(true)
+                    setNotificationRetry(current => current + 1)
+                }}
+                onOpen={openNotification}
+                navigation={renderNavigation()}
+                onSettings={() => navigate('profile')}
+            />
+        )
+    }
+
     if (screen === 'courses') {
         return (
             <Courses
@@ -210,7 +435,7 @@ function Dashboard({ user, onLogout, loading, message }) {
                     >
                         Manage courses
                     </button>
-
+                    <NotificationSettings />
                     <button
                         className="secondary-button"
                         onClick={onLogout}
@@ -218,6 +443,8 @@ function Dashboard({ user, onLogout, loading, message }) {
                     >
                         {loading ? 'Logging out…' : 'Log out'}
                     </button>
+
+
 
                     <p className="form-message error" role="status">
                         {message}
@@ -419,6 +646,35 @@ function Dashboard({ user, onLogout, loading, message }) {
                             })}
                         </p>
                     </div>
+                    <button
+                        type="button"
+                        className="notification-bell"
+                        aria-label={
+                            notificationsError
+                                ? 'Notifications — unable to refresh'
+                                : notificationsLoading
+                                    ? 'Notifications — loading'
+                                    : `Notifications, ${notifications.filter(item => !item.readAt).length
+                                    } unread`
+                        }
+                        onClick={() => navigate('notifications')}
+                    >
+                        <svg
+                            className="notification-icon"
+                            viewBox="0 0 24 24"
+                            aria-hidden="true"
+                        >
+                            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+                            <path d="M10 21h4" />
+                        </svg>
+
+                        {notifications.some(item => !item.readAt) && (
+                            <span className="notification-badge" aria-hidden="true">
+                                {notifications.filter(item => !item.readAt).length}
+                            </span>
+                        )}
+                    </button>
+
                 </header>
 
 

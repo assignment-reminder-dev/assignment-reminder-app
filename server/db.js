@@ -44,4 +44,32 @@ db.exec(`
 `
 );
 
+db.exec(`
+    CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+        user_id INTEGER NOT NULL
+            REFERENCES users(id) ON DELETE CASCADE,
+
+        assignment_id INTEGER NOT NULL
+            REFERENCES assignments(id) ON DELETE CASCADE,
+
+        due_at TEXT NOT NULL,
+
+        reminder_minutes INTEGER NOT NULL
+            CHECK (reminder_minutes IN (60, 1440, 2880)),
+
+        reminder_at TEXT NOT NULL,
+
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+        read_at TEXT,
+
+        UNIQUE (assignment_id, due_at, reminder_minutes)
+    );
+
+    CREATE INDEX IF NOT EXISTS notifications_user_reminder
+        ON notifications(user_id, reminder_at);
+`);
+
 module.exports = db;
