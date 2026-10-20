@@ -1,0 +1,22 @@
+.notification-preferences {
+    margin: 24px 0;
+}
+
+.notification-preferences>.secondary-button {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.notification-preferences p {
+    color: var(--slate);
+    line-height: 1.5;
+}
+
+.notification-preferences .error {
+    color: var(--rust);
+}
+
+.notification-preferences .form-message:empty {
+    margin: 0;
+}

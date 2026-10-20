@@ -93,7 +93,8 @@ function Dashboard({ user, onLogout, loading, message }) {
 
                     if (
                         'Notification' in window &&
-                        Notification.permission === 'granted'
+                        Notification.permission === 'granted' &&
+                        localStorage.getItem(`assignment-desktop-enabled:${user.id}`) !== 'off'
                     ) {
                         try {
                             const pending = data.notifications.filter(item => {
@@ -144,6 +145,13 @@ function Dashboard({ user, onLogout, loading, message }) {
                                             `assignment-popup:${user.id}:${item.id}`
 
                                         if (localStorage.getItem(key)) continue
+                                        if (
+                                            localStorage.getItem(
+                                                `assignment-desktop-enabled:${user.id}`,
+                                            ) === 'off'
+                                        ) {
+                                            break
+                                        }
 
                                         const popup = new Notification(
                                             `Reminder: ${assignment.title}`,
@@ -322,6 +330,7 @@ function Dashboard({ user, onLogout, loading, message }) {
 
                 <button
                     type="button"
+                    aria-current={screen === 'tasks' ? 'page' : undefined}
                     onClick={() => navigate('tasks')}
                 >
                     <svg
@@ -338,6 +347,7 @@ function Dashboard({ user, onLogout, loading, message }) {
 
                 <button
                     type="button"
+                    aria-current={screen === 'profile' ? 'page' : undefined}
                     onClick={() => navigate('profile')}
                 >
                     <svg
@@ -409,9 +419,10 @@ function Dashboard({ user, onLogout, loading, message }) {
     }
     if (screen === 'profile') {
         return (
-            <main className="auth-page">
+            <main className="auth-page settings-page">
                 <section className="auth-card">
                     <button
+                        type="button"
                         className="back-button"
                         aria-label="Back to dashboard"
                         onClick={() => navigate('home')}
@@ -429,14 +440,36 @@ function Dashboard({ user, onLogout, loading, message }) {
                     </div>
 
                     <button
-                        className="primary-button"
+                        type="button"
+                        className="secondary-button"
                         onClick={() => navigate('courses')}
                         disabled={loading}
                     >
                         Manage courses
                     </button>
-                    <NotificationSettings />
+
+                    <NotificationSettings
+                        key={user.id}
+                        userId={user.id}
+                    />
+
+                    <section
+                        className="settings-text-preference"
+                        aria-label="Text size"
+                    >
+                        <div className="settings-text-row">
+                            Text size: Use device setting
+                        </div>
+
+                        <p>
+                            Use your browser’s zoom or text-size settings
+                            to adjust readability. Every status and
+                            priority has a text label.
+                        </p>
+                    </section>
+
                     <button
+                        type="button"
                         className="secondary-button"
                         onClick={onLogout}
                         disabled={loading}
@@ -444,15 +477,16 @@ function Dashboard({ user, onLogout, loading, message }) {
                         {loading ? 'Logging out…' : 'Log out'}
                     </button>
 
-
-
                     <p className="form-message error" role="status">
                         {message}
                     </p>
                 </section>
+
+                {renderNavigation()}
             </main>
         )
     }
+
     if (screen === 'edit' && selectedAssignment) {
         return (
             <AddAssignment
@@ -621,6 +655,7 @@ function Dashboard({ user, onLogout, loading, message }) {
                         Back to dashboard
                     </button>
                 </div>
+                {renderNavigation()}
             </main>
         )
     }

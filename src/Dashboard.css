@@ -237,6 +237,7 @@
 
 .dashboard-nav button[aria-current="page"] {
     border-color: var(--teal);
+    background: #e3f2f0;
     color: var(--teal);
     font-weight: 700;
 }
@@ -293,4 +294,38 @@
     border-radius: 8px;
     background: var(--navy);
     color: white;
+}
+
+.auth-page.settings-page {
+    display: block;
+    height: auto;
+    min-height: 100dvh;
+    padding: 32px 24px calc(160px + env(safe-area-inset-bottom));
+    box-sizing: border-box;
+    overflow: visible;
+}
+
+.settings-page>.auth-card {
+    margin: 0 auto;
+}
+
+.settings-text-preference {
+    margin: 28px 0 40px;
+}
+
+.settings-text-row {
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: white;
+    color: var(--navy);
+    font: inherit;
+    font-weight: 700;
+    text-align: center;
+}
+
+.settings-text-preference p {
+    margin: 16px 0 0;
+    color: var(--slate);
+    line-height: 1.5;
 }
