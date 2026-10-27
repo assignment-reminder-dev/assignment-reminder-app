@@ -9,7 +9,26 @@ import './Dashboard.css'
 import './Assignments.css'
 
 function Dashboard({ user, onLogout, loading, message }) {
-    const [screen, setScreen] = useState('home')
+    const [screen, setScreen] = useState(() => {
+        try {
+            const savedScreen = sessionStorage.getItem(
+                `assignment-screen:${user.id}`,
+            )
+
+            const pages = [
+                'home',
+                'calendar',
+                'tasks',
+                'profile',
+                'courses',
+                'notifications',
+            ]
+
+            return pages.includes(savedScreen) ? savedScreen : 'home'
+        } catch {
+            return 'home'
+        }
+    })
     const [selectedAssignment, setSelectedAssignment] = useState(null)
     const [detailsOrigin, setDetailsOrigin] = useState('home')
     const [assignments, setAssignments] = useState([])
@@ -23,6 +42,27 @@ function Dashboard({ user, onLogout, loading, message }) {
     const [notificationsError, setNotificationsError] = useState('')
     const [notificationRetry, setNotificationRetry] = useState(0)
     const [openingNotificationId, setOpeningNotificationId] = useState(null)
+    useEffect(() => {
+        const pages = [
+            'home',
+            'calendar',
+            'tasks',
+            'profile',
+            'courses',
+            'notifications',
+        ]
+
+        if (!pages.includes(screen)) return
+
+        try {
+            sessionStorage.setItem(
+                `assignment-screen:${user.id}`,
+                screen,
+            )
+        } catch {
+            // Navigation still works when browser storage is unavailable.
+        }
+    }, [screen, user.id])
 
     useEffect(() => {
         const timer = setInterval(() => setNow(Date.now()), 30000)
@@ -471,7 +511,17 @@ function Dashboard({ user, onLogout, loading, message }) {
                     <button
                         type="button"
                         className="secondary-button"
-                        onClick={onLogout}
+                        onClick={() => {
+                            try {
+                                sessionStorage.removeItem(
+                                    `assignment-screen:${user.id}`,
+                                )
+                            } catch {
+                                // Allow logout even if browser storage is unavailable.
+                            }
+
+                            onLogout()
+                        }}
                         disabled={loading}
                     >
                         {loading ? 'Logging out…' : 'Log out'}
