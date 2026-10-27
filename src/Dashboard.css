@@ -329,3 +329,19 @@
     color: var(--slate);
     line-height: 1.5;
 }
+
+@media (max-width: 600px) {
+    .dashboard-header {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .dashboard-header>div {
+        min-width: 0;
+    }
+
+    .dashboard-header .notification-bell {
+        flex-shrink: 0;
+    }
+}
