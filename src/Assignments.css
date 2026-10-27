@@ -425,3 +425,21 @@
 .reminder-preview p {
     margin: 6px 0;
 }
+
+.assignment-save-warning {
+    margin: 32px 0;
+    padding: 20px;
+    border-radius: 12px;
+    background: #fff4e8;
+    color: var(--navy);
+}
+
+.assignment-save-warning strong {
+    display: block;
+    color: var(--rust);
+}
+
+.assignment-save-warning p {
+    margin: 12px 0 0;
+    line-height: 1.5;
+}

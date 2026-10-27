@@ -9,6 +9,7 @@ function AddAssignment({ onBack, onSaved, onManageCourses, assignment = null }) 
     const [saving, setSaving] = useState(false)
     const [message, setMessage] = useState('')
     const [errors, setErrors] = useState({})
+    const [saveFailed, setSaveFailed] = useState(false)
 
     const [form, setForm] = useState(() => {
         if (!assignment) {
@@ -146,19 +147,102 @@ function AddAssignment({ onBack, onSaved, onManageCourses, assignment = null }) 
             if (!response.ok) {
                 setErrors(data.errors || {})
                 setMessage(data.message || 'Could not save your assignment.')
+
+                if (response.status >= 500) {
+                    setSaveFailed(true)
+                } else {
+                    setSaveFailed(false)
+                }
+
                 return
             }
 
+            if (!data.assignment) {
+                throw new Error('Save confirmation is missing.')
+            }
+
+            setSaveFailed(false)
             onSaved(data.assignment)
         } catch {
+            setSaveFailed(true)
             setMessage(
-                'Could not confirm the save. Your entries have been kept. Check your connection before retrying.',
+                'We could not confirm this save. Reconnect and retry; your entries have been kept.',
             )
         } finally {
             setSaving(false)
         }
     }
+    if (saveFailed) {
+        return (
+            <main className="auth-page">
+                <section className="auth-card assignment-form">
+                    <button
+                        type="button"
+                        className="back-button"
+                        aria-label="Return to editing"
+                        onClick={() => setSaveFailed(false)}
+                        disabled={saving}
+                    >
+                        ‹
+                    </button>
 
+                    <h1>Could not save</h1>
+                    <p className="intro">
+                        Your changes are still in this form.
+                    </p>
+
+                    <div className="assignment-save-warning" role="alert">
+                        <strong>ⓘ Check your connection</strong>
+                        <p>{message}</p>
+                    </div>
+
+                    <div className="form-field">
+                        <label htmlFor="failed-assignment-title">
+                            Assignment title *
+                        </label>
+                        <input
+                            id="failed-assignment-title"
+                            value={form.title}
+                            readOnly
+                        />
+                    </div>
+
+                    <div className="form-field">
+                        <label htmlFor="failed-assignment-deadline">
+                            Due date and time *
+                        </label>
+                        <input
+                            id="failed-assignment-deadline"
+                            value={`${form.date} · ${form.time}`}
+                            readOnly
+                        />
+                    </div>
+
+                    <button
+                        type="button"
+                        className="primary-button"
+                        onClick={saveAssignment}
+                        disabled={saving}
+                    >
+                        {saving ? 'Saving…' : 'Retry save'}
+                    </button>
+
+                    <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => setSaveFailed(false)}
+                        disabled={saving}
+                    >
+                        Return to editing
+                    </button>
+
+                    <p className="helper">
+                        Show success only after storage confirms the save.
+                    </p>
+                </section>
+            </main>
+        )
+    }
     return (
         <main className="auth-page">
             <section className="auth-card assignment-form">
