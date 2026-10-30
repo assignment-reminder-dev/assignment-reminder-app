@@ -62,10 +62,20 @@ function courseId(req, res, next) {
 // View your courses.
 router.get('/', (req, res) => {
     const courses = db.prepare(`
-    SELECT id, code, name
-    FROM courses
-    WHERE user_id = ?
-    ORDER BY code COLLATE NOCASE, id
+    SELECT
+    c.id,
+    c.code,
+    c.name,
+    (
+        SELECT COUNT(*)
+        FROM assignments a
+        WHERE a.course_id = c.id
+          AND a.user_id = c.user_id
+          AND a.status != 'Completed'
+    ) AS activeAssignmentCount
+FROM courses c
+WHERE c.user_id = ?
+ORDER BY c.code COLLATE NOCASE, c.id
   `).all(req.session.userId);
 
     res.json({ courses });

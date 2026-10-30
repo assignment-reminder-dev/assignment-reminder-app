@@ -110,3 +110,62 @@
     opacity: 1;
     cursor: not-allowed;
 }
+
+.auth-page.courses-list-page {
+    padding-bottom: calc(140px + env(safe-area-inset-bottom));
+}
+
+.course-item .course-assignment-count {
+    margin-top: 12px;
+    color: var(--teal);
+    font-size: 14px;
+}
+
+.courses-add-button {
+    margin-bottom: 24px;
+}
+
+.course-card-button {
+    display: block;
+    width: 100%;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.course-card-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    color: var(--navy);
+    font-size: 20px;
+}
+
+.course-card-name {
+    display: block;
+    margin-top: 8px;
+    color: var(--slate);
+}
+
+.course-card-button .course-assignment-count {
+    display: block;
+    margin-top: 12px;
+    color: var(--teal);
+    font-size: 14px;
+}
+
+.course-card-button:hover {
+    background: #f0f7f6;
+}
+
+.course-card-button:focus-visible {
+    outline: 3px solid var(--teal);
+    outline-offset: 3px;
+}
+
+.course-edit-removal {
+    margin-top: 32px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+}

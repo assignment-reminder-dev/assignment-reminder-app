@@ -403,6 +403,58 @@ function Dashboard({ user, onLogout, loading, message }) {
             </nav>
         )
     }
+    if (screen === 'saved' && selectedAssignment) {
+        return (
+            <main className="auth-page">
+                <section className="auth-card">
+
+                    <h1>Changes saved</h1>
+
+                    <span className="saved-checkmark" aria-hidden="true">
+                        ✓
+                    </span>
+
+                    <p className="intro" role="status">
+                        Your update was stored successfully.
+                    </p>
+
+                    <div className="saved-assignment-summary">
+                        <h2>{selectedAssignment.title}</h2>
+                        <p>
+                            {selectedAssignment.courseCode}
+                            {' · '}
+                            {new Date(selectedAssignment.dueAt)
+                                .toLocaleString(undefined, {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: 'numeric',
+                                    minute: '2-digit',
+                                })}
+                        </p>
+                    </div>
+
+                    <button
+                        type="button"
+                        className="primary-button"
+                        onClick={() => navigate('details')}
+                    >
+                        View assignment
+                    </button>
+
+                    <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => {
+                            setSelectedAssignment(null)
+                            navigate('home')
+                        }}
+                    >
+                        Back to dashboard
+                    </button>
+                </section>
+            </main>
+        )
+    }
     if (screen === 'calendar') {
         return (
             <Calendar
@@ -441,6 +493,7 @@ function Dashboard({ user, onLogout, loading, message }) {
             <Courses
                 onBack={() => navigate('home')}
                 onViewAssignments={() => navigate('tasks')}
+                navigation={renderNavigation()}
             />
         )
     }
@@ -450,10 +503,21 @@ function Dashboard({ user, onLogout, loading, message }) {
             <AddAssignment
                 onBack={() => navigate('home')}
                 onManageCourses={() => navigate('courses')}
-                onSaved={assignment => {
-                    setSavedMessage(`Assignment saved: ${assignment.title}`)
-                    setScreen('home')
+                onSaved={savedAssignment => {
+                    setSelectedAssignment(savedAssignment)
+                    setDetailsOrigin('home')
+                    navigate('saved')
                 }}
+            />
+        )
+    }
+    if (screen === 'notification-permission') {
+        return (
+            <NotificationSettings
+                key={`permission:${user.id}`}
+                userId={user.id}
+                permissionScreen
+                onBack={() => navigate('profile')}
             />
         )
     }
@@ -491,6 +555,7 @@ function Dashboard({ user, onLogout, loading, message }) {
                     <NotificationSettings
                         key={user.id}
                         userId={user.id}
+                        onOpenPermission={() => navigate('notification-permission')}
                     />
 
                     <section
@@ -547,9 +612,11 @@ function Dashboard({ user, onLogout, loading, message }) {
                 onSaved={updated => {
                     setSelectedAssignment(updated)
                     setAssignments(current =>
-                        current.map(item => item.id === updated.id ? updated : item)
+                        current.map(item =>
+                            item.id === updated.id ? updated : item
+                        )
                     )
-                    navigate('details')
+                    navigate('saved')
                 }}
             />
         )
@@ -561,14 +628,25 @@ function Dashboard({ user, onLogout, loading, message }) {
                 onUpdated={updated => {
                     setSelectedAssignment(updated)
                     setAssignments(current =>
-                        current.map(item => item.id === updated.id ? updated : item)
+                        current.map(item =>
+                            item.id === updated.id ? updated : item
+                        )
                     )
+                    navigate('saved')
                 }}
                 onBack={() => {
                     setSelectedAssignment(null)
                     navigate(detailsOrigin)
                 }}
                 onEdit={() => navigate('edit')}
+                onDeletedBack={() => {
+                    setSelectedAssignment(null)
+                    navigate('tasks')
+                }}
+                onAdd={() => {
+                    setSelectedAssignment(null)
+                    navigate('add')
+                }}
 
             />
         )
@@ -666,10 +744,14 @@ function Dashboard({ user, onLogout, loading, message }) {
                         ‹
                     </button>
 
-                    <h1>All assignments</h1>
-                    <p className="section-description">
-                        Sorted by due date · earliest first
-                    </p>
+                    {(fetching || fetchError || assignments.length > 0) && (
+                        <>
+                            <h1>All assignments</h1>
+                            <p className="section-description">
+                                Sorted by due date · earliest first
+                            </p>
+                        </>
+                    )}
 
                     {fetching ? (
                         <p role="status">Loading assignments…</p>
@@ -684,8 +766,40 @@ function Dashboard({ user, onLogout, loading, message }) {
                             </button>
                         </>
                     ) : assignments.length === 0 ? (
-                        <p>No assignments yet.</p>
-                    ) : (
+                        <section className="assignments-empty-state">
+                            <h1>No assignments yet</h1>
+                            <p>A fresh start for your semester.</p>
+
+                            <div className="assignments-empty-icon" aria-hidden="true">
+                                <svg viewBox="0 0 48 48">
+                                    <circle cx="10" cy="12" r="2" />
+                                    <circle cx="10" cy="24" r="2" />
+                                    <circle cx="10" cy="36" r="2" />
+                                    <path d="M20 12h20M20 24h20M20 36h20" />
+                                </svg>
+                            </div>
+
+                            <h3>Make room for what matters.</h3>
+                            <p>
+                                Add a course, then enter an assignment and its due date.
+                            </p>
+
+                            <button
+                                type="button"
+                                className="primary-button"
+                                onClick={() => navigate('add')}
+                            >
+                                + Add your first assignment
+                            </button>
+
+                            <button
+                                type="button"
+                                className="secondary-button"
+                                onClick={() => navigate('courses')}
+                            >
+                                Manage courses
+                            </button>
+                        </section>) : (
                         <>
                             {active.length > 0 && assignmentCards(active)}
 
@@ -698,12 +812,14 @@ function Dashboard({ user, onLogout, loading, message }) {
                         </>
                     )}
 
-                    <button
-                        className="secondary-button"
-                        onClick={() => navigate('home')}
-                    >
-                        Back to dashboard
-                    </button>
+                    {assignments.length > 0 && (
+                        <button
+                            className="secondary-button"
+                            onClick={() => navigate('home')}
+                        >
+                            Back to dashboard
+                        </button>
+                    )}
                 </div>
                 {renderNavigation()}
             </main>

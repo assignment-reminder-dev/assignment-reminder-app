@@ -171,6 +171,43 @@ function App() {
     return (
       <main className="auth-page">
         <section className="auth-card welcome-card">
+          <div className="welcome-illustration" aria-hidden="true">
+            <svg viewBox="0 0 100 100">
+              <rect
+                x="23"
+                y="28"
+                width="50"
+                height="47"
+                rx="7"
+                fill="none"
+                stroke="var(--teal)"
+                strokeWidth="2"
+              />
+              <path
+                d="M23 43h50M36 21v15M60 21v15"
+                fill="none"
+                stroke="var(--teal)"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+              <circle
+                cx="70"
+                cy="74"
+                r="18"
+                fill="var(--navy)"
+                stroke="var(--background)"
+                strokeWidth="2"
+              />
+              <path
+                d="m62 74 5 5 11-12"
+                fill="none"
+                stroke="white"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
           <h1>
             Assignment
             <br />

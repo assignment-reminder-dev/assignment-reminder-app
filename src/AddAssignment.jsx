@@ -10,6 +10,7 @@ function AddAssignment({ onBack, onSaved, onManageCourses, assignment = null }) 
     const [message, setMessage] = useState('')
     const [errors, setErrors] = useState({})
     const [saveFailed, setSaveFailed] = useState(false)
+    const [validationMode, setValidationMode] = useState(false)
 
     const [form, setForm] = useState(() => {
         if (!assignment) {
@@ -106,11 +107,24 @@ function AddAssignment({ onBack, onSaved, onManageCourses, assignment = null }) 
         setErrors({})
         setMessage('')
 
+        const validationErrors = {}
+
+        if (!courses.some(course => course.id === Number(form.courseId))) {
+            validationErrors.courseId = 'Choose one of your saved courses.'
+        }
+
+        if (!form.title.trim() || form.title.trim().length > 200) {
+            validationErrors.title =
+                'Enter an assignment title with 1–200 characters.'
+        }
+
         const [year, month, day] = form.date.split('-').map(Number)
         const [hour, minute] = form.time.split(':').map(Number)
         const deadline = new Date(year, month - 1, day, hour, minute)
 
         if (
+            !form.date ||
+            !form.time ||
             !Number.isFinite(deadline.getTime()) ||
             year < 1900 ||
             year > 9999 ||
@@ -120,7 +134,26 @@ function AddAssignment({ onBack, onSaved, onManageCourses, assignment = null }) 
             deadline.getHours() !== hour ||
             deadline.getMinutes() !== minute
         ) {
-            setErrors({ dueAt: 'Enter a valid date and time in your time zone.' })
+            validationErrors.dueAt =
+                'Enter a valid due date and time in your time zone.'
+        }
+
+        if (!['High', 'Medium', 'Low'].includes(form.priority)) {
+            validationErrors.priority = 'Choose a priority.'
+        }
+
+        if (form.notes.length > 2000) {
+            validationErrors.notes = 'Notes must contain at most 2,000 characters.'
+        }
+
+        if (!['0', '60', '1440', '2880'].includes(form.reminderMinutes)) {
+            validationErrors.reminderMinutes = 'Choose a reminder option.'
+        }
+
+        if (Object.keys(validationErrors).length > 0) {
+            setErrors(validationErrors)
+            setValidationMode(true)
+            setMessage('Check the highlighted fields. Your entries have been kept.')
             return
         }
 
@@ -146,6 +179,9 @@ function AddAssignment({ onBack, onSaved, onManageCourses, assignment = null }) 
 
             if (!response.ok) {
                 setErrors(data.errors || {})
+                if (Object.keys(data.errors || {}).length > 0) {
+                    setValidationMode(true)
+                }
                 setMessage(data.message || 'Could not save your assignment.')
 
                 if (response.status >= 500) {
@@ -255,8 +291,19 @@ function AddAssignment({ onBack, onSaved, onManageCourses, assignment = null }) 
                     ‹
                 </button>
 
-                <h1>{assignment ? 'Edit assignment' : 'Add assignment'}</h1>
-                <p className="intro">Required fields are marked with *.</p>
+                <h1>
+                    {validationMode
+                        ? 'Check your entries'
+                        : assignment
+                            ? 'Edit assignment'
+                            : 'Add assignment'}
+                </h1>
+
+                <p className="intro" role="status">
+                    {validationMode
+                        ? 'Assignment has not been saved.'
+                        : 'Required fields are marked with *.'}
+                </p>
 
                 {loading ? (
                     <p role="status">Loading courses…</p>
@@ -283,137 +330,147 @@ function AddAssignment({ onBack, onSaved, onManageCourses, assignment = null }) 
                         </button>
                     </>
                 ) : (
-                    <form onSubmit={saveAssignment}>
-                        <fieldset disabled={saving}>
-                            <div className="form-field">
-                                <label htmlFor="assignment-course">Course *</label>
-                                <select
-                                    id="assignment-course"
-                                    name="courseId"
-                                    value={form.courseId}
-                                    onChange={changeField}
-                                    {...errorAttributes('courseId')}
-                                    required
-                                >
-                                    <option value="">Choose a course</option>
-                                    {courses.map(course => (
-                                        <option key={course.id} value={course.id}>
-                                            {course.code} · {course.name}
-                                        </option>
-                                    ))}
-                                </select>
-                                {fieldError('courseId')}
-                            </div>
+                    <form onSubmit={saveAssignment} noValidate>                        <fieldset disabled={saving}>
+                        <div className="form-field">
+                            <label htmlFor="assignment-course">Course *</label>
+                            <select
+                                id="assignment-course"
+                                name="courseId"
+                                value={form.courseId}
+                                onChange={changeField}
+                                {...errorAttributes('courseId')}
+                                required
+                            >
+                                <option value="">Choose a course</option>
+                                {courses.map(course => (
+                                    <option key={course.id} value={course.id}>
+                                        {course.code} · {course.name}
+                                    </option>
+                                ))}
+                            </select>
+                            {fieldError('courseId')}
+                        </div>
 
+                        <div className="form-field">
+                            <label htmlFor="assignment-title">Assignment title *</label>
+                            <input
+                                id="assignment-title"
+                                name="title"
+                                placeholder="UI wireframe"
+                                value={form.title}
+                                onChange={changeField}
+                                maxLength={200}
+                                {...errorAttributes('title')}
+                                required
+                            />
+                            {fieldError('title')}
+                        </div>
+
+                        <div className="assignment-date-row">
                             <div className="form-field">
-                                <label htmlFor="assignment-title">Assignment title *</label>
+                                <label htmlFor="assignment-date">Due date *</label>
                                 <input
-                                    id="assignment-title"
-                                    name="title"
-                                    placeholder="UI wireframe"
-                                    value={form.title}
+                                    id="assignment-date"
+                                    name="date"
+                                    type="date"
+                                    min="1900-01-01"
+                                    max="9999-12-31"
+                                    value={form.date}
                                     onChange={changeField}
-                                    maxLength={200}
-                                    {...errorAttributes('title')}
+                                    {...errorAttributes('dueAt')}
                                     required
                                 />
-                                {fieldError('title')}
-                            </div>
-
-                            <div className="assignment-date-row">
-                                <div className="form-field">
-                                    <label htmlFor="assignment-date">Due date *</label>
-                                    <input
-                                        id="assignment-date"
-                                        name="date"
-                                        type="date"
-                                        min="1900-01-01"
-                                        max="9999-12-31"
-                                        value={form.date}
-                                        onChange={changeField}
-                                        {...errorAttributes('dueAt')}
-                                        required
-                                    />
-                                </div>
-
-                                <div className="form-field">
-                                    <label htmlFor="assignment-time">Due time *</label>
-                                    <input
-                                        id="assignment-time"
-                                        name="time"
-                                        type="time"
-                                        value={form.time}
-                                        onChange={changeField}
-                                        {...errorAttributes('dueAt')}
-                                        required
-                                    />
-                                </div>
-                            </div>
-                            {fieldError('dueAt')}
-                            <div className="form-field">
-                                <fieldset
-                                    className="priority-fieldset"
-                                    aria-describedby={errors.priority ? 'priority-error' : undefined}
-                                >
-                                    <legend>Priority *</legend>
-
-                                    <div className="priority-options">
-                                        {['High', 'Medium', 'Low'].map(priority => (
-                                            <label className="priority-option" key={priority}>
-                                                <input
-                                                    type="radio"
-                                                    name="priority"
-                                                    value={priority}
-                                                    checked={form.priority === priority}
-                                                    onChange={changeField}
-                                                    required
-                                                />
-                                                <span>{priority}</span>
-                                            </label>
-                                        ))}
-                                    </div>
-                                </fieldset>
-
-                                {fieldError('priority')}
                             </div>
 
                             <div className="form-field">
-                                <label htmlFor="assignment-notes">Notes (optional)</label>
-                                <textarea
-                                    id="assignment-notes"
-                                    name="notes"
-                                    placeholder="Add any useful details."
-                                    value={form.notes}
+                                <label htmlFor="assignment-time">Due time *</label>
+                                <input
+                                    id="assignment-time"
+                                    name="time"
+                                    type="time"
+                                    value={form.time}
                                     onChange={changeField}
-                                    maxLength={2000}
-                                    rows={4}
-                                    {...errorAttributes('notes')}
+                                    {...errorAttributes('dueAt')}
+                                    required
                                 />
-                                {fieldError('notes')}
                             </div>
+                        </div>
+                        {fieldError('dueAt')}
+                        <div className="form-field">
+                            <fieldset
+                                className="priority-fieldset"
+                                aria-describedby={errors.priority ? 'priority-error' : undefined}
+                            >
+                                <legend>Priority *</legend>
 
-                            <div className="form-field">
-                                <label htmlFor="assignment-reminder">Reminder</label>
-                                <select
-                                    id="assignment-reminder"
-                                    name="reminderMinutes"
-                                    value={form.reminderMinutes}
-                                    onChange={changeField}
-                                    {...errorAttributes('reminderMinutes')}
-                                >
-                                    <option value="60">1 hour before</option>
-                                    <option value="1440">1 day before</option>
-                                    <option value="2880">2 days before</option>
-                                    <option value="0">Off — no reminder</option>
-                                </select>
-                                <small>Uses your device time zone.</small>
-                                {fieldError('reminderMinutes')}
-                            </div>
+                                <div className="priority-options">
+                                    {['High', 'Medium', 'Low'].map(priority => (
+                                        <label className="priority-option" key={priority}>
+                                            <input
+                                                type="radio"
+                                                name="priority"
+                                                value={priority}
+                                                checked={form.priority === priority}
+                                                onChange={changeField}
+                                                required
+                                            />
+                                            <span>{priority}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </fieldset>
 
-                            <button className="primary-button" type="submit">
-                                {saving ? 'Saving…' : assignment ? 'Save changes' : 'Save assignment'}
-                            </button>
-                        </fieldset>
+                            {fieldError('priority')}
+                        </div>
+
+                        <div className="form-field">
+                            <label htmlFor="assignment-notes">Notes (optional)</label>
+                            <textarea
+                                id="assignment-notes"
+                                name="notes"
+                                placeholder="Add any useful details."
+                                value={form.notes}
+                                onChange={changeField}
+                                maxLength={2000}
+                                rows={4}
+                                {...errorAttributes('notes')}
+                            />
+                            {fieldError('notes')}
+                        </div>
+
+                        <div className="form-field">
+                            <label htmlFor="assignment-reminder">Reminder</label>
+                            <select
+                                id="assignment-reminder"
+                                name="reminderMinutes"
+                                value={form.reminderMinutes}
+                                onChange={changeField}
+                                {...errorAttributes('reminderMinutes')}
+                            >
+                                <option value="60">1 hour before</option>
+                                <option value="1440">1 day before</option>
+                                <option value="2880">2 days before</option>
+                                <option value="0">Off — no reminder</option>
+                            </select>
+                            <small>Uses your device time zone.</small>
+                            {fieldError('reminderMinutes')}
+                        </div>
+                        {validationMode && (
+                            <p className="helper">
+                                Other entries are kept while you correct errors.
+                            </p>
+                        )}
+
+                        <button className="primary-button" type="submit">
+                            {saving
+                                ? 'Saving…'
+                                : validationMode
+                                    ? 'Correct and save'
+                                    : assignment
+                                        ? 'Save changes'
+                                        : 'Save assignment'}
+                        </button>
+                    </fieldset>
                     </form>
                 )}
 

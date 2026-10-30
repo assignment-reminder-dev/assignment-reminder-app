@@ -14,9 +14,10 @@ async function requestCourses(path = '', options = {}) {
     return data
 }
 
-function Courses({ onBack, onViewAssignments }) {
+function Courses({ onBack, onViewAssignments, navigation }) {
     const [courses, setCourses] = useState([])
     const [view, setView] = useState('list')
+    const [savedCourse, setSavedCourse] = useState(null)
     const [selected, setSelected] = useState(null)
     const [form, setForm] = useState({ code: '', name: '' })
     const [errors, setErrors] = useState({})
@@ -140,17 +141,19 @@ function Courses({ onBack, onViewAssignments }) {
             setCourses(current => {
                 const updated = selected
                     ? current.map(course =>
-                        course.id === selected.id ? data.course : course)
+                        course.id === selected.id
+                            ? { ...course, ...data.course }
+                            : course)
                     : [...current, data.course]
 
                 return updated.sort((a, b) => a.code.localeCompare(b.code))
             })
 
-            setView('list')
+            setSavedCourse(data.course)
+            setView('saved')
             setSelected(null)
             setForm({ code: '', name: '' })
-            setSuccess(true)
-            setMessage(data.message)
+            setMessage('')
         } catch (error) {
             setErrors(error.fields || {})
             setMessage(
@@ -201,10 +204,54 @@ function Courses({ onBack, onViewAssignments }) {
         setForm({ code: '', name: '' })
         setView('list')
     }
+    if (view === 'saved' && savedCourse) {
+        return (
+            <main className="auth-page">
+                <section className="auth-card">
+                    <h1>Changes saved</h1>
+
+                    <p className="intro" role="status">
+                        Your course was stored successfully.
+                    </p>
+
+                    <span className="saved-checkmark" aria-hidden="true">
+                        ✓
+                    </span>
+
+                    <div className="saved-assignment-summary">
+                        <h2>{savedCourse.code}</h2>
+                        <p>{savedCourse.name}</p>
+                    </div>
+
+                    <button
+                        type="button"
+                        className="primary-button"
+                        onClick={() => {
+                            clearFeedback()
+                            setSavedCourse(null)
+                            setView('list')
+                        }}
+                    >
+                        View courses
+                    </button>
+
+                    <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={onBack}
+                    >
+                        Back to dashboard
+                    </button>
+                </section>
+            </main>
+        )
+    }
 
     return (
-        <main className="auth-page">
-            <section className="auth-card courses-card">
+        <main
+            className={`auth-page ${view === 'list' ? 'courses-list-page' : ''
+                }`}
+        >            <section className="auth-card courses-card">
                 <button
                     className="back-button"
                     aria-label={view === 'list' ? 'Back to dashboard' : 'Back to courses'}
@@ -216,8 +263,8 @@ function Courses({ onBack, onViewAssignments }) {
 
                 {view === 'list' && (
                     <>
-                        <h1>Manage courses</h1>
-                        <p className="intro">Your semester, organized by course.</p>
+                        <h1>Your courses</h1>
+                        <p className="intro">Keep every task connected to a class.</p>
 
                         {loading ? (
                             <p role="status">Loading courses…</p>
@@ -233,6 +280,13 @@ function Courses({ onBack, onViewAssignments }) {
                             </div>
                         ) : (
                             <>
+                                <button
+                                    className="primary-button courses-add-button"
+                                    onClick={() => openForm()}
+                                >
+                                    + Add course
+                                </button>
+
                                 {courses.length === 0 ? (
                                     <div className="course-item">
                                         <h2>No courses yet</h2>
@@ -241,42 +295,34 @@ function Courses({ onBack, onViewAssignments }) {
                                 ) : (
                                     <ul className="course-list">
                                         {courses.map(course => (
-                                            <li className="course-item" key={course.id}>
-                                                <h2>{course.code}</h2>
-                                                <p>{course.name}</p>
+                                            <li key={course.id}>
+                                                <button
+                                                    type="button"
+                                                    className="course-item course-card-button"
+                                                    onClick={() => openForm(course)}
+                                                >
+                                                    <span className="course-card-heading">
+                                                        <strong>{course.code}</strong>
+                                                        <span aria-hidden="true">›</span>
+                                                    </span>
 
-                                                <div className="course-actions">
-                                                    <button
-                                                        className="secondary-button"
-                                                        aria-label={`Edit ${course.code}`}
-                                                        onClick={() => openForm(course)}
-                                                    >
-                                                        Edit
-                                                    </button>
+                                                    <span className="course-card-name">
+                                                        {course.name}
+                                                    </span>
 
-                                                    <button
-                                                        className="secondary-button remove-button"
-                                                        aria-label={`Remove ${course.code}`}
-                                                        onClick={() => {
-                                                            clearFeedback()
-                                                            setSelected(course)
-                                                            setView('remove')
-                                                        }}
-                                                    >
-                                                        Remove
-                                                    </button>
-                                                </div>
+                                                    <span className="course-assignment-count">
+                                                        {course.activeAssignmentCount ?? 0}{' '}
+                                                        {course.activeAssignmentCount === 1
+                                                            ? 'active assignment'
+                                                            : 'active assignments'}
+                                                    </span>
+                                                </button>
                                             </li>
                                         ))}
                                     </ul>
                                 )}
 
-                                <button
-                                    className="primary-button"
-                                    onClick={() => openForm()}
-                                >
-                                    + Add course
-                                </button>
+
                             </>
                         )}
                     </>
@@ -342,6 +388,25 @@ function Courses({ onBack, onViewAssignments }) {
                         >
                             Cancel
                         </button>
+                        {selected && (
+                            <div className="course-edit-removal">
+                                <button
+                                    type="button"
+                                    className="secondary-button"
+                                    disabled={busy}
+                                    onClick={() => {
+                                        clearFeedback()
+                                        setView('remove')
+                                    }}
+                                >
+                                    Remove course
+                                </button>
+
+                                <p className="helper">
+                                    Removal requires confirmation.
+                                </p>
+                            </div>
+                        )}
                     </>
                 )}
 
@@ -439,6 +504,8 @@ function Courses({ onBack, onViewAssignments }) {
                     {message}
                 </p>
             </section>
+
+            {view === 'list' && navigation}
         </main>
     )
 }

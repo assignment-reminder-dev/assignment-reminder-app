@@ -20,3 +20,24 @@
 .notification-preferences .form-message:empty {
     margin: 0;
 }
+
+.permission-bell {
+    display: grid;
+    place-items: center;
+    width: 96px;
+    height: 96px;
+    margin: 40px auto;
+    border-radius: 50%;
+    background: #e3f2f0;
+    color: var(--teal);
+}
+
+.permission-bell svg {
+    width: 40px;
+    height: 40px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}

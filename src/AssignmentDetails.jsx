@@ -8,13 +8,21 @@ const reminderLabels = {
     2880: '2 days before',
 }
 
-function AssignmentDetails({ assignment, onBack, onUpdated, onEdit }) {
+function AssignmentDetails({
+    assignment,
+    onBack,
+    onUpdated,
+    onEdit,
+    onDeletedBack,
+    onAdd,
+}) {
     const [changingStatus, setChangingStatus] = useState(false)
     const [draftStatus, setDraftStatus] = useState(assignment.status)
     const [saving, setSaving] = useState(false)
     const [message, setMessage] = useState('')
     const [success, setSuccess] = useState(false)
     const [confirmingDelete, setConfirmingDelete] = useState(false)
+    const [deleted, setDeleted] = useState(false)
     const [changingReminder, setChangingReminder] = useState(false)
     const [draftReminder, setDraftReminder] = useState(
         assignment.reminderMinutes,
@@ -83,7 +91,44 @@ function AssignmentDetails({ assignment, onBack, onUpdated, onEdit }) {
             setSaving(false)
         }
 
-        onBack()
+        setDeleted(true)
+    }
+    if (deleted) {
+        return (
+            <main className="auth-page">
+                <section className="auth-card">
+                    <h1>Assignment deleted</h1>
+
+                    <p className="intro" role="status">
+                        The task and its reminder were removed.
+                    </p>
+
+                    <span className="saved-checkmark" aria-hidden="true">
+                        ✓
+                    </span>
+
+                    <button
+                        type="button"
+                        className="primary-button"
+                        onClick={onDeletedBack}
+                    >
+                        Back to assignments
+                    </button>
+
+                    <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={onAdd}
+                    >
+                        + Add another assignment
+                    </button>
+
+                    <p className="helper">
+                        Your other assignments are unchanged.
+                    </p>
+                </section>
+            </main>
+        )
     }
 
     if (confirmingDelete) {
@@ -93,29 +138,55 @@ function AssignmentDetails({ assignment, onBack, onUpdated, onEdit }) {
                     <h1>Delete assignment?</h1>
 
                     <p className="intro">
-                        Delete “{assignment.title}” from {assignment.courseCode}?
-                        This cannot be undone.
+                        Please review before continuing.
                     </p>
 
-                    <button
-                        type="button"
-                        className="primary-button assignment-delete-button"
-                        disabled={saving}
-                        onClick={deleteAssignment}
-                    >
-                        {saving ? 'Deleting…' : 'Delete assignment'}
-                    </button>
+                    <div className="saved-assignment-summary">
+                        <h2>{assignment.title}</h2>
+
+                        <p>
+                            {assignment.courseCode}
+                            {' · '}
+                            {new Date(assignment.dueAt).toLocaleString(
+                                undefined,
+                                {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: 'numeric',
+                                    minute: '2-digit',
+                                },
+                            )}
+                        </p>
+                    </div>
+
+                    <div className="assignment-save-warning">
+                        <strong>ⓘ This removes the assignment</strong>
+                        <p>
+                            The scheduled reminder is also removed.
+                            <br />
+                            Keep assignment cancels this action.
+                        </p>
+                    </div>
 
                     <button
                         type="button"
-                        className="secondary-button"
+                        className="primary-button"
                         disabled={saving}
                         onClick={() => {
                             setConfirmingDelete(false)
                             setMessage('')
                         }}
                     >
-                        Cancel
+                        Keep assignment
+                    </button>
+
+                    <button
+                        type="button"
+                        className="primary-button confirm-assignment-delete"
+                        disabled={saving}
+                        onClick={deleteAssignment}
+                    >
+                        {saving ? 'Deleting…' : 'Delete assignment'}
                     </button>
 
                     <p className="form-message error" role="status">

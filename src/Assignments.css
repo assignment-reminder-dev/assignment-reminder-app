@@ -443,3 +443,21 @@
     margin: 12px 0 0;
     line-height: 1.5;
 }
+
+.confirm-assignment-delete {
+    margin-top: 16px;
+    border-color: var(--rust);
+    background: var(--rust);
+    color: white;
+}
+
+.confirm-assignment-delete:hover:not(:disabled) {
+    border-color: #7c2a0e;
+    background: #7c2a0e;
+}
+
+.assignment-form input[aria-invalid="true"],
+.assignment-form select[aria-invalid="true"],
+.assignment-form textarea[aria-invalid="true"] {
+    border: 2px solid var(--rust);
+}
