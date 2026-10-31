@@ -6,29 +6,32 @@ require('dotenv').config({
     path: path.join(__dirname, '.env')
 });
 
-const SqliteStore = require('better-sqlite3-session-store')(session);
+const PgStore = require('connect-pg-simple')(session);
 const db = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const production = process.env.NODE_ENV === 'production';
+if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
+    throw new Error('SESSION_SECRET must contain at least 32 characters. Keep the same value across restarts.');
+}
+if (production) app.set('trust proxy', 1);
+app.use('/api', (req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+    next();
+});
 
 app.use(express.json({ limit: '10kb' }));
 app.use(session({
     name: 'assignment.sid',
     secret: process.env.SESSION_SECRET,
-    store: new SqliteStore({
-        client: db,
-        expired: {
-            clear: true,
-            intervalMs: 15 * 60 * 1000
-        }
-    }),
+    store: new PgStore({ pool: db.pool, createTableIfMissing: false }),
     resave: false,
     saveUninitialized: false,
     cookie: {
         httpOnly: true,
         sameSite: 'lax',
-        secure: false,
+        secure: production,
         maxAge: 24 * 60 * 60 * 1000
     }
 }));
@@ -78,9 +81,7 @@ app.post('/api/auth/register', async (req, res, next) => {
             });
         }
 
-        const existingUser = db.prepare(
-            'SELECT id FROM users WHERE email = ?'
-        ).get(cleanEmail);
+        const existingUser = await db.one('SELECT id FROM users WHERE email = $1', [cleanEmail]);
 
         if (existingUser) {
             return res.status(409).json({
@@ -93,12 +94,12 @@ app.post('/api/auth/register', async (req, res, next) => {
         let result;
 
         try {
-            result = db.prepare(`
+            result = await db.execute(`
         INSERT INTO users (name, email, password_hash)
-        VALUES (?, ?, ?)
-      `).run(cleanName, cleanEmail, passwordHash);
+        VALUES ($1, $2, $3)
+       RETURNING id`, [cleanName, cleanEmail, passwordHash]);
         } catch (error) {
-            if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+            if (error.code === '23505') {
                 return res.status(409).json({
                     message: 'This email is already registered.'
                 });
@@ -136,9 +137,7 @@ app.post('/api/auth/login', async (req, res, next) => {
             });
         }
 
-        const user = db.prepare(
-            'SELECT * FROM users WHERE email = ?'
-        ).get(email.trim().toLowerCase());
+        const user = await db.one('SELECT * FROM users WHERE email = $1', [email.trim().toLowerCase()]);
 
         const validPassword = user
             ? await bcrypt.compare(password, user.password_hash)
@@ -173,11 +172,9 @@ app.post('/api/auth/login', async (req, res, next) => {
     }
 });
 
-app.get('/api/auth/me', (req, res) => {
+app.get('/api/auth/me', async (req, res) => {
     const user = req.session.userId
-        ? db.prepare(
-            'SELECT id, name, email FROM users WHERE id = ?'
-        ).get(req.session.userId)
+        ? await db.one('SELECT id, name, email FROM users WHERE id = $1', [req.session.userId])
         : null;
 
     if (!user) {
@@ -196,7 +193,7 @@ app.post('/api/auth/logout', (req, res, next) => {
         res.clearCookie('assignment.sid', {
             httpOnly: true,
             sameSite: 'lax',
-            secure: false
+            secure: production
         });
 
         res.json({ message: 'Logged out successfully.' });
@@ -235,12 +232,22 @@ app.use((error, req, res, next) => {
         });
     }
 
-    console.error(error);
+    console.error('Request failed:', error.code || error.name);
     res.status(500).json({
         message: 'Something went wrong. Please try again.'
     });
 });
 
-app.listen(PORT, () => {
-    console.log(`Server running at http://localhost:${PORT}`);
-});
+async function start() {
+    await db.initialize();
+    return app.listen(PORT, '0.0.0.0', () => {
+        console.log(`Server listening on port ${PORT}`);
+    });
+}
+if (require.main === module) {
+    start().catch(error => {
+        console.error('Server startup failed:', error.code || error.name);
+        process.exit(1);
+    });
+}
+module.exports = { app, start };

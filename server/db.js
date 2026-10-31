@@ -1,81 +1,45 @@
-const Database = require('better-sqlite3');
+const { Pool } = require('pg');
+const fs = require('node:fs/promises');
 const path = require('node:path');
-const fs = require('node:fs');
 
-const databasePath = process.env.DATABASE_PATH
-  ? path.resolve(process.env.DATABASE_PATH)
-  : path.join(__dirname, 'app.db');
+if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL is required. Set it in server/.env or your hosting environment.');
+}
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    max: 5,
+    connectionTimeoutMillis: 10000,
+    idleTimeoutMillis: 30000,
+});
+pool.on('error', error => console.error('Database connection error:', error.code || error.name));
 
-fs.mkdirSync(path.dirname(databasePath), { recursive: true });
-
-const db = new Database(databasePath);
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    email TEXT NOT NULL COLLATE NOCASE UNIQUE,
-    password_hash TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS courses (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL REFERENCES users(id),
-    code TEXT NOT NULL COLLATE NOCASE,
-    name TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(user_id, code)
-  );
-    CREATE TABLE IF NOT EXISTS assignments (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL REFERENCES users(id),
-    course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE RESTRICT,
-    title TEXT NOT NULL,
-    due_at TEXT NOT NULL,
-    priority TEXT NOT NULL
-      CHECK(priority IN ('High', 'Medium', 'Low')),
-    notes TEXT NOT NULL DEFAULT '',
-    status TEXT NOT NULL DEFAULT 'Not Started'
-      CHECK(status IN ('Not Started', 'In Progress', 'Completed')),
-    reminder_minutes INTEGER NOT NULL DEFAULT 1440
-      CHECK(reminder_minutes IN (0, 60, 1440, 2880)),
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE INDEX IF NOT EXISTS assignments_user_due
-    ON assignments(user_id, due_at);
-`
-);
-
-db.exec(`
-    CREATE TABLE IF NOT EXISTS notifications (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-        user_id INTEGER NOT NULL
-            REFERENCES users(id) ON DELETE CASCADE,
-
-        assignment_id INTEGER NOT NULL
-            REFERENCES assignments(id) ON DELETE CASCADE,
-
-        due_at TEXT NOT NULL,
-
-        reminder_minutes INTEGER NOT NULL
-            CHECK (reminder_minutes IN (60, 1440, 2880)),
-
-        reminder_at TEXT NOT NULL,
-
-        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-        read_at TEXT,
-
-        UNIQUE (assignment_id, due_at, reminder_minutes)
-    );
-
-    CREATE INDEX IF NOT EXISTS notifications_user_reminder
-        ON notifications(user_id, reminder_at);
-`);
-
-module.exports = db;
+function queries(client) {
+    return {
+        async one(sql, values = []) { return (await client.query(sql, values)).rows[0]; },
+        async many(sql, values = []) { return (await client.query(sql, values)).rows; },
+        async execute(sql, values = []) {
+            const result = await client.query(sql, values);
+            return { changes: result.rowCount, lastInsertRowid: result.rows[0]?.id };
+        },
+    };
+}
+module.exports = {
+    ...queries(pool),
+    pool,
+    async initialize() {
+        const sql = await fs.readFile(path.join(__dirname, 'schema.sql'), 'utf8');
+        await pool.query(sql);
+    },
+    async transaction(work) {
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            const result = await work(queries(client));
+            await client.query('COMMIT');
+            return result;
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally { client.release(); }
+    },
+};

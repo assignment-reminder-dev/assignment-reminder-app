@@ -3,10 +3,9 @@ const db = require('./db');
 
 const router = express.Router();
 
-router.use((req, res, next) => {
+router.use(async (req, res, next) => {
     const user = req.session.userId
-        ? db.prepare('SELECT id FROM users WHERE id = ?')
-            .get(req.session.userId)
+        ? await db.one('SELECT id FROM users WHERE id = $1', [req.session.userId])
         : null;
 
     if (!user) {
@@ -21,69 +20,35 @@ router.use((req, res, next) => {
 // Add reminders whose time has arrived.
 // Completed assignments, overdue assignments, and reminders set to Off
 // do not generate new notifications.
-const generateReminders = db.transaction((userId, now) => {
-    const assignments = db.prepare(`
-        SELECT id, due_at, reminder_minutes
+async function generateReminders(userId, now) {
+    await db.execute(`
+        INSERT INTO notifications (user_id, assignment_id, due_at, reminder_minutes, reminder_at)
+        SELECT user_id, id, due_at, reminder_minutes,
+            to_char(due_at::timestamptz AT TIME ZONE 'UTC' - reminder_minutes * INTERVAL '1 minute',
+                    'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
         FROM assignments
-        WHERE user_id = ?
-          AND status != 'Completed'
+        WHERE user_id = $1 AND status != 'Completed'
           AND reminder_minutes IN (60, 1440, 2880)
-    `).all(userId);
+          AND due_at::timestamptz - reminder_minutes * INTERVAL '1 minute' <= $2::timestamptz
+          AND due_at::timestamptz > $2::timestamptz
+        ON CONFLICT (assignment_id, due_at, reminder_minutes) DO NOTHING
+    `, [userId, new Date(now).toISOString()]);
+}
 
-    const insert = db.prepare(`
-        INSERT INTO notifications (
-            user_id,
-            assignment_id,
-            due_at,
-            reminder_minutes,
-            reminder_at
-        )
-        VALUES (?, ?, ?, ?, ?)
-        ON CONFLICT (assignment_id, due_at, reminder_minutes)
-        DO NOTHING
-    `);
-
-    for (const assignment of assignments) {
-        const deadline = new Date(assignment.due_at).getTime();
-
-        if (!Number.isFinite(deadline)) continue;
-
-        const reminderTime =
-            deadline - assignment.reminder_minutes * 60 * 1000;
-
-        if (reminderTime <= now && now < deadline) {
-            insert.run(
-                userId,
-                assignment.id,
-                assignment.due_at,
-                assignment.reminder_minutes,
-                new Date(reminderTime).toISOString()
-            );
-        }
-    }
-});
-
-router.get('/', (req, res, next) => {
+router.get('/', async (req, res, next) => {
     try {
-        generateReminders(req.session.userId, Date.now());
+        await generateReminders(req.session.userId, Date.now());
 
-        const notifications = db.prepare(`
-            SELECT
-                n.id,
-                n.assignment_id AS assignmentId,
-                n.due_at AS dueAt,
-                n.reminder_minutes AS reminderMinutes,
-                n.reminder_at AS reminderAt,
-                n.read_at AS readAt,
-                a.title,
-                c.code AS courseCode
+        const notifications = await db.many(`
+            SELECT n.id, n.assignment_id AS "assignmentId", n.due_at AS "dueAt",
+                n.reminder_minutes AS "reminderMinutes", n.reminder_at AS "reminderAt",
+                n.read_at AS "readAt", a.title, c.code AS "courseCode"
             FROM notifications n
-            JOIN assignments a
-                ON a.id = n.assignment_id AND a.user_id = n.user_id
+            JOIN assignments a ON a.id = n.assignment_id AND a.user_id = n.user_id
             JOIN courses c ON c.id = a.course_id
-            WHERE n.user_id = ?
+            WHERE n.user_id = $1
             ORDER BY n.reminder_at DESC, n.id DESC
-        `).all(req.session.userId);
+        `, [req.session.userId]);
 
         res.json({
             notifications,
@@ -96,7 +61,7 @@ router.get('/', (req, res, next) => {
     }
 });
 
-router.patch('/:id/read', (req, res, next) => {
+router.patch('/:id/read', async (req, res, next) => {
     const id = Number(req.params.id);
 
     if (
@@ -109,15 +74,13 @@ router.patch('/:id/read', (req, res, next) => {
     }
 
     try {
-        const result = db.prepare(`
+        const result = await db.execute(`
             UPDATE notifications
-            SET read_at = COALESCE(read_at, ?)
-            WHERE id = ? AND user_id = ?
-        `).run(
-            new Date().toISOString(),
+            SET read_at = COALESCE(read_at, $1)
+            WHERE id = $2 AND user_id = $3
+        `, [new Date().toISOString(),
             id,
-            req.session.userId
-        );
+            req.session.userId]);
 
         if (!result.changes) {
             return res.status(404).json({

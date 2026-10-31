@@ -4,10 +4,9 @@ const db = require('./db');
 const router = express.Router();
 
 // All course requests require a logged-in account.
-router.use((req, res, next) => {
+router.use(async (req, res, next) => {
     const user = req.session.userId
-        ? db.prepare('SELECT id FROM users WHERE id = ?')
-            .get(req.session.userId)
+        ? await db.one('SELECT id FROM users WHERE id = $1', [req.session.userId])
         : null;
 
     if (!user) {
@@ -60,29 +59,29 @@ function courseId(req, res, next) {
 }
 
 // View your courses.
-router.get('/', (req, res) => {
-    const courses = db.prepare(`
+router.get('/', async (req, res, next) => {
+    const courses = await db.many(`
     SELECT
     c.id,
     c.code,
     c.name,
     (
-        SELECT COUNT(*)
+        SELECT COUNT(*)::integer
         FROM assignments a
         WHERE a.course_id = c.id
           AND a.user_id = c.user_id
           AND a.status != 'Completed'
-    ) AS activeAssignmentCount
+    ) AS "activeAssignmentCount"
 FROM courses c
-WHERE c.user_id = ?
-ORDER BY c.code COLLATE NOCASE, c.id
-  `).all(req.session.userId);
+WHERE c.user_id = $1
+ORDER BY LOWER(c.code), c.id
+  `, [req.session.userId]);
 
     res.json({ courses });
 });
 
 // Add a course.
-router.post('/', (req, res, next) => {
+router.post('/', async (req, res, next) => {
     const { errors, code, name } = validateCourse(req.body);
 
     if (Object.keys(errors).length) {
@@ -93,10 +92,10 @@ router.post('/', (req, res, next) => {
     }
 
     try {
-        const result = db.prepare(`
+        const result = await db.execute(`
       INSERT INTO courses (user_id, code, name)
-      VALUES (?, ?, ?)
-    `).run(req.session.userId, code, name);
+      VALUES ($1, $2, $3)
+     RETURNING id`, [req.session.userId, code, name]);
 
         res.status(201).json({
             message: 'Course added successfully.',
@@ -107,7 +106,7 @@ router.post('/', (req, res, next) => {
             }
         });
     } catch (error) {
-        if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+        if (error.code === '23505') {
             return res.status(409).json({
                 message: 'You already have a course with this code.',
                 errors: {
@@ -121,11 +120,11 @@ router.post('/', (req, res, next) => {
 });
 
 // Edit one of your courses.
-router.put('/:id', courseId, (req, res, next) => {
-    const existing = db.prepare(`
+router.put('/:id', courseId, async (req, res, next) => {
+    const existing = await db.one(`
     SELECT id FROM courses
-    WHERE id = ? AND user_id = ?
-  `).get(req.courseId, req.session.userId);
+    WHERE id = $1 AND user_id = $2
+  `, [req.courseId, req.session.userId]);
 
     if (!existing) {
         return res.status(404).json({
@@ -143,18 +142,18 @@ router.put('/:id', courseId, (req, res, next) => {
     }
 
     try {
-        db.prepare(`
+        await db.execute(`
       UPDATE courses
-      SET code = ?, name = ?
-      WHERE id = ? AND user_id = ?
-    `).run(code, name, req.courseId, req.session.userId);
+      SET code = $1, name = $2
+      WHERE id = $3 AND user_id = $4
+    `, [code, name, req.courseId, req.session.userId]);
 
         res.json({
             message: 'Course updated successfully.',
             course: { id: req.courseId, code, name }
         });
     } catch (error) {
-        if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+        if (error.code === '23505') {
             return res.status(409).json({
                 message: 'You already have a course with this code.',
                 errors: {
@@ -168,12 +167,12 @@ router.put('/:id', courseId, (req, res, next) => {
 });
 
 // Remove one of your courses.
-router.delete('/:id', courseId, (req, res, next) => {
+router.delete('/:id', courseId, async (req, res, next) => {
     try {
-        const result = db.prepare(`
+        const result = await db.execute(`
       DELETE FROM courses
-      WHERE id = ? AND user_id = ?
-    `).run(req.courseId, req.session.userId);
+      WHERE id = $1 AND user_id = $2
+    `, [req.courseId, req.session.userId]);
 
         if (!result.changes) {
             return res.status(404).json({
@@ -185,7 +184,7 @@ router.delete('/:id', courseId, (req, res, next) => {
             message: 'Course removed successfully.'
         });
     } catch (error) {
-        if (error.code === 'SQLITE_CONSTRAINT_FOREIGNKEY') {
+        if (['23503', '23001'].includes(error.code)) {
             return res.status(409).json({
                 message:
                     'This course has assignments. Move or delete them before removing the course.'

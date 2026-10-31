@@ -3,10 +3,9 @@ const db = require('./db');
 
 const router = express.Router();
 
-router.use((req, res, next) => {
+router.use(async (req, res, next) => {
     const user = req.session.userId
-        ? db.prepare('SELECT id FROM users WHERE id = ?')
-            .get(req.session.userId)
+        ? await db.one('SELECT id FROM users WHERE id = $1', [req.session.userId])
         : null;
 
     if (!user) {
@@ -21,32 +20,32 @@ router.use((req, res, next) => {
 const assignmentQuery = `
   SELECT
     a.id,
-    a.course_id AS courseId,
-    c.code AS courseCode,
-    c.name AS courseName,
+    a.course_id AS "courseId",
+    c.code AS "courseCode",
+    c.name AS "courseName",
     a.title,
-    a.due_at AS dueAt,
+    a.due_at AS "dueAt",
     a.priority,
     a.notes,
     a.status,
-    a.reminder_minutes AS reminderMinutes
+    a.reminder_minutes AS "reminderMinutes"
   FROM assignments a
   JOIN courses c ON c.id = a.course_id
 `;
 
 // View your assignments, earliest deadline first.
-router.get('/', (req, res) => {
-    const assignments = db.prepare(`
+router.get('/', async (req, res, next) => {
+    const assignments = await db.many(`
     ${assignmentQuery}
-    WHERE a.user_id = ?
+    WHERE a.user_id = $1
     ORDER BY a.due_at, a.id
-  `).all(req.session.userId);
+  `, [req.session.userId]);
 
     res.json({ assignments });
 });
 
 // Add an assignment.
-router.post('/', (req, res, next) => {
+router.post('/', async (req, res, next) => {
     const body = req.body || {};
     const errors = {};
 
@@ -61,10 +60,10 @@ router.post('/', (req, res, next) => {
     const notes = body.notes === undefined ? '' : body.notes;
 
     const course = Number.isSafeInteger(courseId) && courseId > 0
-        ? db.prepare(`
+        ? await db.one(`
         SELECT id FROM courses
-        WHERE id = ? AND user_id = ?
-      `).get(courseId, req.session.userId)
+        WHERE id = $1 AND user_id = $2
+      `, [courseId, req.session.userId])
         : null;
 
     if (!course) {
@@ -119,7 +118,7 @@ router.post('/', (req, res, next) => {
     }
 
     try {
-        const result = db.prepare(`
+        const result = await db.execute(`
       INSERT INTO assignments (
         user_id,
         course_id,
@@ -129,21 +128,19 @@ router.post('/', (req, res, next) => {
         notes,
         reminder_minutes
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(
-            req.session.userId,
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+     RETURNING id`, [req.session.userId,
             courseId,
             title.trim(),
             dueAt,
             priority,
             notes.trim(),
-            reminderMinutes
-        );
+            reminderMinutes]);
 
-        const assignment = db.prepare(`
+        const assignment = await db.one(`
       ${assignmentQuery}
-      WHERE a.id = ? AND a.user_id = ?
-    `).get(Number(result.lastInsertRowid), req.session.userId);
+      WHERE a.id = $1 AND a.user_id = $2
+    `, [Number(result.lastInsertRowid), req.session.userId]);
 
         res.status(201).json({
             message: 'Assignment saved successfully.',
@@ -154,7 +151,7 @@ router.post('/', (req, res, next) => {
     }
 });
 
-router.patch('/:id/status', (req, res, next) => {
+router.patch('/:id/status', async (req, res, next) => {
     const id = Number(req.params.id);
     const { status } = req.body || {};
 
@@ -174,11 +171,11 @@ router.patch('/:id/status', (req, res, next) => {
     }
 
     try {
-        const result = db.prepare(`
+        const result = await db.execute(`
       UPDATE assignments
-      SET status = ?
-      WHERE id = ? AND user_id = ?
-    `).run(status, id, req.session.userId);
+      SET status = $1
+      WHERE id = $2 AND user_id = $3
+    `, [status, id, req.session.userId]);
 
         if (!result.changes) {
             return res.status(404).json({
@@ -186,10 +183,10 @@ router.patch('/:id/status', (req, res, next) => {
             });
         }
 
-        const assignment = db.prepare(`
+        const assignment = await db.one(`
       ${assignmentQuery}
-      WHERE a.id = ? AND a.user_id = ?
-    `).get(id, req.session.userId);
+      WHERE a.id = $1 AND a.user_id = $2
+    `, [id, req.session.userId]);
 
         res.json({
             message: 'Status saved successfully.',
@@ -200,7 +197,7 @@ router.patch('/:id/status', (req, res, next) => {
     }
 });
 
-router.put('/:id', (req, res, next) => {
+router.put('/:id', async (req, res, next) => {
     const id = Number(req.params.id);
 
     if (
@@ -212,10 +209,10 @@ router.put('/:id', (req, res, next) => {
         });
     }
 
-    const existing = db.prepare(`
+    const existing = await db.one(`
     SELECT id FROM assignments
-    WHERE id = ? AND user_id = ?
-  `).get(id, req.session.userId);
+    WHERE id = $1 AND user_id = $2
+  `, [id, req.session.userId]);
 
     if (!existing) {
         return res.status(404).json({
@@ -231,10 +228,10 @@ router.put('/:id', (req, res, next) => {
     const errors = {};
 
     const course = Number.isSafeInteger(courseId) && courseId > 0
-        ? db.prepare(`
+        ? await db.one(`
         SELECT id FROM courses
-        WHERE id = ? AND user_id = ?
-      `).get(courseId, req.session.userId)
+        WHERE id = $1 AND user_id = $2
+      `, [courseId, req.session.userId])
         : null;
 
     if (!course) {
@@ -288,26 +285,24 @@ router.put('/:id', (req, res, next) => {
     }
 
     try {
-        db.prepare(`
+        await db.execute(`
       UPDATE assignments
-      SET course_id = ?, title = ?, due_at = ?,
-          priority = ?, notes = ?, reminder_minutes = ?
-      WHERE id = ? AND user_id = ?
-    `).run(
-            courseId,
+      SET course_id = $1, title = $2, due_at = $3,
+          priority = $4, notes = $5, reminder_minutes = $6
+      WHERE id = $7 AND user_id = $8
+    `, [courseId,
             title.trim(),
             dueAt,
             priority,
             notes.trim(),
             reminderMinutes,
             id,
-            req.session.userId
-        );
+            req.session.userId]);
 
-        const assignment = db.prepare(`
+        const assignment = await db.one(`
       ${assignmentQuery}
-      WHERE a.id = ? AND a.user_id = ?
-    `).get(id, req.session.userId);
+      WHERE a.id = $1 AND a.user_id = $2
+    `, [id, req.session.userId]);
 
         res.json({
             message: 'Assignment updated successfully.',
@@ -317,7 +312,7 @@ router.put('/:id', (req, res, next) => {
         next(error);
     }
 });
-router.delete('/:id', (req, res, next) => {
+router.delete('/:id', async (req, res, next) => {
     const id = Number(req.params.id);
 
     if (
@@ -330,10 +325,10 @@ router.delete('/:id', (req, res, next) => {
     }
 
     try {
-        const result = db.prepare(`
+        const result = await db.execute(`
             DELETE FROM assignments
-            WHERE id = ? AND user_id = ?
-        `).run(id, req.session.userId);
+            WHERE id = $1 AND user_id = $2
+        `, [id, req.session.userId]);
 
         if (!result.changes) {
             return res.status(404).json({
@@ -348,7 +343,7 @@ router.delete('/:id', (req, res, next) => {
         next(error);
     }
 });
-router.patch('/:id/reminder', (req, res, next) => {
+router.patch('/:id/reminder', async (req, res, next) => {
     const id = Number(req.params.id);
     const { reminderMinutes } = req.body || {};
 
@@ -368,11 +363,11 @@ router.patch('/:id/reminder', (req, res, next) => {
     }
 
     try {
-        const result = db.prepare(`
+        const result = await db.execute(`
             UPDATE assignments
-            SET reminder_minutes = ?
-            WHERE id = ? AND user_id = ?
-        `).run(reminderMinutes, id, req.session.userId);
+            SET reminder_minutes = $1
+            WHERE id = $2 AND user_id = $3
+        `, [reminderMinutes, id, req.session.userId]);
 
         if (!result.changes) {
             return res.status(404).json({
@@ -380,10 +375,10 @@ router.patch('/:id/reminder', (req, res, next) => {
             });
         }
 
-        const assignment = db.prepare(`
+        const assignment = await db.one(`
             ${assignmentQuery}
-            WHERE a.id = ? AND a.user_id = ?
-        `).get(id, req.session.userId);
+            WHERE a.id = $1 AND a.user_id = $2
+        `, [id, req.session.userId]);
 
         res.json({
             message: 'Reminder saved successfully.',
