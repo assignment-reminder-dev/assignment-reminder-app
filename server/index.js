@@ -1,16 +1,28 @@
 const session = require('express-session');
-const { randomBytes } = require('node:crypto');
 const express = require('express');
+const path = require('node:path');
 const bcrypt = require('bcryptjs');
+require('dotenv').config({
+    path: path.join(__dirname, '.env')
+});
+
+const SqliteStore = require('better-sqlite3-session-store')(session);
 const db = require('./db');
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 
 app.use(express.json({ limit: '10kb' }));
 app.use(session({
     name: 'assignment.sid',
-    secret: process.env.SESSION_SECRET || randomBytes(32).toString('hex'),
+    secret: process.env.SESSION_SECRET,
+    store: new SqliteStore({
+        client: db,
+        expired: {
+            clear: true,
+            intervalMs: 15 * 60 * 1000
+        }
+    }),
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -193,6 +205,23 @@ app.post('/api/auth/logout', (req, res, next) => {
 app.use('/api/courses', require('./courses'));
 app.use('/api/assignments', require('./assignments'));
 app.use('/api/notifications', require('./notifications'));
+// Return JSON for unknown API endpoints.
+app.use('/api', (req, res) => {
+    res.status(404).json({
+        message: 'API endpoint not found.'
+    });
+});
+
+// Serve the built React website.
+const websitePath = path.join(__dirname, '..', 'dist');
+
+app.use(express.static(websitePath));
+
+app.get(/.*/, (req, res, next) => {
+    res.sendFile(path.join(websitePath, 'index.html'), error => {
+        if (error) next(error);
+    });
+});
 app.use((error, req, res, next) => {
     if (error.type === 'entity.parse.failed') {
         return res.status(400).json({
