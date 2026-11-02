@@ -3,8 +3,16 @@
   --teal: #006c67;
   --slate: #526275;
   --rust: #9a3412;
-  --background: #f5f7fa;
-  --border: #8999ad;
+  --background: #f8fafc;
+  --border: #cbd5e1;
+}
+
+main,
+.dashboard-container,
+.app-container {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 24px 16px 88px;
 }
 
 .auth-page {
@@ -224,17 +232,6 @@
   color: var(--slate);
 }
 
-@media (max-width: 480px) {
-  .auth-page {
-    align-items: start;
-    padding: 24px;
-  }
-
-  .welcome-card {
-    padding-top: 64px;
-  }
-}
-
 .welcome-illustration {
   display: grid;
   place-items: center;
@@ -249,4 +246,126 @@
   display: block;
   width: 100px;
   height: 100px;
+}
+
+.metrics-container,
+.stats-grid,
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 16px 0 28px;
+}
+
+.metric-card,
+.stat-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.assignment-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 20px;
+  margin-bottom: 14px;
+  border-radius: 12px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid var(--navy);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.assignment-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.07);
+}
+
+.assignment-card h3,
+.assignment-card .title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--navy);
+  margin: 0;
+}
+
+.assignment-card h4,
+.assignment-card .course {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--teal);
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.assignment-card .due-date,
+.assignment-card time {
+  font-size: 0.85rem;
+  color: var(--slate);
+  margin: 0;
+}
+
+.badge,
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.badge-high,
+[class*="high"],
+[class*="High"] {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.badge-medium,
+[class*="medium"],
+[class*="Medium"] {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.badge-low,
+[class*="low"],
+[class*="Low"] {
+  background-color: #e0f2fe;
+  color: #075985;
+}
+
+.status-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  color: var(--slate);
+  background: #f1f5f9;
+  padding: 3px 8px;
+  border-radius: 6px;
+  width: fit-content;
+}
+
+@media (max-width: 480px) {
+  .auth-page {
+    align-items: start;
+    padding: 24px;
+  }
+
+  .welcome-card {
+    padding-top: 64px;
+  }
+
+  main,
+  .dashboard-container,
+  .app-container {
+    padding: 16px 12px 80px;
+  }
 }
